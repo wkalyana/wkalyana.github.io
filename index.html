@@ -1,0 +1,2601 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Egypt Digital Museum — History Comes Alive</title>
+  
+  <!-- Poppins Font + Playfair Display for headings -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;0,800;1,700&family=Poppins:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+  <style>
+    /* ===== ROOT VARIABLES ===== */
+    :root {
+      --gold:         #E5C158;
+      --gold-light:   #FDE8A0;
+      --gold-dark:    #9A781E;
+      --sand:         #D6C29E;
+      --sand-light:   #F6EEDB;
+      --obsidian:     #080706;
+      --deep:         #0C0A08;
+      --lapis:        #1A3D68;
+      --turquoise:    #00E5FF;
+      --neon-gold:    #FFD54F;
+      --magic-glow:   #FF6B9D;
+      
+      --glass-bg:           rgba(18, 15, 11, 0.45);
+      --glass-bg-hover:     rgba(28, 23, 17, 0.65);
+      --glass-border:       rgba(229, 193, 88, 0.22);
+      --glass-border-hover: rgba(229, 193, 88, 0.55);
+      --glass-highlight:    rgba(255, 255, 255, 0.12);
+      --glass-blur:         blur(16px);
+      --glass-shadow:       0 20px 50px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+      
+      --glow:         0 0 20px rgba(229,193,88,0.5), 0 0 45px rgba(229,193,88,0.25);
+      --glow-cyan:    0 0 20px rgba(0,229,255,0.6), 0 0 40px rgba(0,229,255,0.25);
+      --glow-magic:   0 0 30px rgba(255,107,157,0.4), 0 0 60px rgba(255,107,157,0.15);
+      
+      /* Font Families - Poppins based */
+      --font-display: 'Playfair Display', serif;
+      --font-heading: 'Poppins', sans-serif;
+      --font-body:    'Poppins', sans-serif;
+    }
+
+    /* ===== RESET & BASE ===== */
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      background: var(--obsidian);
+      color: var(--sand-light);
+      font-family: var(--font-body);
+      overflow-x: hidden;
+      cursor: none;
+      letter-spacing: -0.01em;
+    }
+
+    /* ===== GLASS UTILITIES ===== */
+    .glass-panel {
+      background: var(--glass-bg);
+      backdrop-filter: var(--glass-blur);
+      -webkit-backdrop-filter: var(--glass-blur);
+      border: 1px solid var(--glass-border);
+      box-shadow: var(--glass-shadow);
+      border-radius: 12px;
+      position: relative;
+      overflow: hidden;
+      transition: all 0.35s ease;
+    }
+    .glass-panel::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0; height: 1px;
+      background: linear-gradient(90deg, transparent, var(--glass-highlight), transparent);
+      pointer-events: none;
+    }
+    .glass-panel:hover {
+      background: var(--glass-bg-hover);
+      border-color: var(--glass-border-hover);
+      box-shadow: 0 25px 60px rgba(0,0,0,0.8), 0 0 30px rgba(229,193,88,0.15);
+    }
+
+    /* ===== CUSTOM CURSOR ===== */
+    .cursor {
+      width: 14px; height: 14px;
+      border: 2px solid var(--gold);
+      border-radius: 50%;
+      position: fixed;
+      pointer-events: none;
+      z-index: 99999;
+      transition: transform 0.15s ease, border-color 0.2s;
+    }
+    .cursor-follower {
+      width: 44px; height: 44px;
+      background: rgba(229,193,88,0.06);
+      border: 1px solid rgba(229,193,88,0.3);
+      backdrop-filter: blur(2px);
+      border-radius: 50%;
+      position: fixed;
+      pointer-events: none;
+      z-index: 99998;
+      transition: width 0.3s, height 0.3s;
+    }
+
+    /* ===== SCROLLBAR ===== */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: var(--obsidian); }
+    ::-webkit-scrollbar-thumb { background: rgba(229,193,88,0.4); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--gold); }
+
+    /* ===== THREE.JS BACKGROUND CANVAS ===== */
+    #canvas-bg {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      z-index: 0;
+      pointer-events: none;
+    }
+
+    /* ===== OVERLAY ===== */
+    .overlay {
+      position: fixed; inset: 0;
+      background: radial-gradient(ellipse at 50% 0%, rgba(229,193,88,0.05) 0%, transparent 60%),
+                  linear-gradient(to bottom, rgba(8,7,6,0.3) 0%, transparent 50%, rgba(8,7,6,0.7) 100%);
+      z-index: 1;
+      pointer-events: none;
+    }
+
+    /* ===== CONTENT WRAPPER ===== */
+    .content { position: relative; z-index: 2; }
+
+    /* ===== NAV ===== */
+    nav {
+      position: fixed; top: 1.2rem; left: 50%;
+      transform: translateX(-50%);
+      width: calc(100% - 4rem);
+      max-width: 1240px;
+      padding: 0.9rem 2rem;
+      display: flex; align-items: center; justify-content: space-between;
+      z-index: 1000;
+      background: rgba(14, 11, 8, 0.55);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid rgba(229,193,88,0.22);
+      border-radius: 40px;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.1);
+      transition: all 0.4s ease;
+    }
+    nav.scrolled {
+      top: 0.6rem;
+      background: rgba(10, 8, 6, 0.85);
+      border-color: rgba(229,193,88,0.4);
+      padding: 0.75rem 1.8rem;
+    }
+    .logo {
+      font-family: var(--font-heading);
+      font-size: 0.95rem; font-weight: 800;
+      color: var(--gold);
+      letter-spacing: 0.1em;
+      text-decoration: none;
+      display: flex; align-items: center; gap: 0.6rem;
+    }
+    .logo-glyph {
+      font-size: 1.2rem;
+      color: var(--turquoise);
+      filter: drop-shadow(0 0 10px var(--turquoise));
+    }
+    .logo span { color: #FFF; font-weight: 400; opacity: 0.85; }
+    .nav-links { display: flex; gap: 2rem; list-style: none; }
+    .nav-links a {
+      font-family: var(--font-heading);
+      font-size: 0.78rem; font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase; color: var(--sand);
+      text-decoration: none; position: relative;
+      transition: color 0.3s;
+    }
+    .nav-links a::after {
+      content: ''; position: absolute;
+      bottom: -4px; left: 0;
+      width: 0; height: 2px;
+      background: var(--gold);
+      transition: width 0.3s ease;
+      box-shadow: 0 0 8px var(--gold);
+    }
+    .nav-links a:hover { color: #FFF; }
+    .nav-links a:hover::after { width: 100%; }
+
+    /* ===== HERO WITH CINEMATIC VIDEO ===== */
+    #hero {
+      position: relative;
+      min-height: 100vh;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      text-align: center; padding: 7rem 2rem 3rem;
+      overflow: hidden;
+    }
+    .hero-video-container {
+      position: absolute; inset: 0;
+      width: 100%; height: 100%;
+      overflow: hidden; z-index: -2;
+    }
+    .hero-video-container video {
+      width: 100%; height: 100%;
+      object-fit: cover;
+      filter: brightness(0.35) contrast(1.2) saturate(1.1);
+      transform: scale(1.04);
+      transition: transform 12s ease-out;
+    }
+    .hero-video-container:hover video { transform: scale(1.1); }
+    .hero-video-overlay {
+      position: absolute; inset: 0;
+      background: radial-gradient(circle at center, rgba(8,7,6,0.2) 0%, rgba(8,7,6,0.85) 80%, var(--obsidian) 100%),
+                  linear-gradient(to bottom, rgba(8,7,6,0.4) 0%, transparent 40%, rgba(8,7,6,0.95) 100%);
+      z-index: -1;
+    }
+
+    .video-badge {
+      display: inline-flex;
+      align-items: center; gap: 0.6rem;
+      padding: 0.4rem 1.1rem;
+      background: rgba(18, 14, 10, 0.6);
+      border: 1px solid rgba(229,193,88,0.3);
+      border-radius: 30px;
+      margin-bottom: 1.5rem;
+      font-family: var(--font-heading);
+      font-size: 0.7rem; font-weight: 500;
+      letter-spacing: 0.12em; text-transform: uppercase;
+      color: var(--gold-light);
+      backdrop-filter: blur(12px);
+      box-shadow: 0 8px 25px rgba(0,0,0,0.5);
+    }
+    .pulse-dot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: var(--turquoise);
+      box-shadow: 0 0 12px var(--turquoise);
+      animation: pulseAnim 2s infinite;
+    }
+    @keyframes pulseAnim {
+      0%, 100% { opacity: 0.4; transform: scale(0.9); }
+      50% { opacity: 1; transform: scale(1.3); }
+    }
+
+    .hero-eyebrow {
+      font-family: var(--font-heading);
+      font-size: 0.8rem; font-weight: 700;
+      letter-spacing: 0.35em;
+      text-transform: uppercase; color: var(--turquoise);
+      margin-bottom: 1.2rem;
+      text-shadow: var(--glow-cyan);
+      opacity: 0; animation: fadeUp 1s ease 0.4s forwards;
+    }
+    .hero-title {
+      font-family: var(--font-display);
+      font-size: clamp(2.5rem, 7vw, 5.5rem);
+      font-weight: 800; line-height: 1.1;
+      color: #FFFFFF;
+      letter-spacing: -0.02em;
+      text-shadow: 0 0 35px rgba(229,193,88,0.5), 0 0 80px rgba(0,0,0,0.8);
+      opacity: 0; animation: fadeUp 1s ease 0.7s forwards;
+      margin-bottom: 0.8rem;
+    }
+    .hero-title span {
+      background: linear-gradient(135deg, var(--gold-light) 0%, var(--gold) 60%, var(--turquoise) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .hero-subtitle {
+      font-family: var(--font-heading);
+      font-size: clamp(1.1rem, 2.5vw, 1.6rem);
+      font-weight: 600;
+      letter-spacing: 0.15em; color: var(--sand);
+      margin-bottom: 2rem;
+      opacity: 0; animation: fadeUp 1s ease 1s forwards;
+    }
+    .hero-desc {
+      max-width: 600px;
+      font-weight: 300; font-size: 1.05rem;
+      line-height: 1.8; color: rgba(246,238,219,0.85);
+      margin-bottom: 3rem;
+      opacity: 0; animation: fadeUp 1s ease 1.2s forwards;
+      text-shadow: 0 2px 10px rgba(0,0,0,0.8);
+    }
+    .hero-cta {
+      display: flex; gap: 1.4rem; flex-wrap: wrap; justify-content: center;
+      opacity: 0; animation: fadeUp 1s ease 1.5s forwards;
+      margin-bottom: 3rem;
+    }
+
+    /* Video controls floating widget */
+    .video-controls {
+      position: absolute;
+      bottom: 2rem; right: 2rem;
+      display: flex; gap: 0.6rem;
+      background: rgba(14, 11, 8, 0.65);
+      border: 1px solid rgba(229,193,88,0.25);
+      padding: 0.4rem 0.9rem;
+      border-radius: 30px;
+      backdrop-filter: blur(12px);
+      z-index: 5;
+    }
+    .video-ctrl-btn {
+      background: none; border: none;
+      color: var(--sand-light);
+      cursor: pointer;
+      font-size: 0.75rem;
+      padding: 0.3rem 0.5rem;
+      display: flex; align-items: center; gap: 0.4rem;
+      font-family: var(--font-heading);
+      font-weight: 600; letter-spacing: 0.05em;
+      transition: color 0.3s;
+    }
+    .video-ctrl-btn:hover { color: var(--gold); }
+
+    .scroll-indicator {
+      display: flex; flex-direction: column;
+      align-items: center; gap: 0.5rem;
+      opacity: 0; animation: fadeIn 1s ease 2.2s forwards;
+    }
+    .scroll-indicator span {
+      font-family: var(--font-heading);
+      font-size: 0.68rem; letter-spacing: 0.2em;
+      text-transform: uppercase; color: rgba(229,193,88,0.7);
+    }
+    .scroll-line {
+      width: 1px; height: 45px;
+      background: linear-gradient(to bottom, var(--gold), transparent);
+      animation: scrollPulse 2s ease infinite;
+    }
+
+    /* ===== BUTTONS ===== */
+    .btn-primary {
+      padding: 0.95rem 2.5rem;
+      background: linear-gradient(135deg, var(--gold-dark), var(--gold));
+      color: #080706;
+      font-family: var(--font-heading);
+      font-size: 0.8rem; font-weight: 700;
+      letter-spacing: 0.08em; text-transform: uppercase;
+      text-decoration: none; border: none; cursor: pointer;
+      border-radius: 30px;
+      transition: all 0.35s cubic-bezier(0.2, 1, 0.3, 1);
+      box-shadow: 0 10px 30px rgba(229,193,88,0.35);
+      display: inline-block;
+    }
+    .btn-primary:hover {
+      background: linear-gradient(135deg, var(--gold), var(--gold-light));
+      box-shadow: 0 15px 45px rgba(229,193,88,0.6);
+      transform: translateY(-3px) scale(1.02);
+    }
+    .btn-outline {
+      padding: 0.95rem 2.5rem;
+      background: rgba(18, 14, 10, 0.45); color: #FFF;
+      font-family: var(--font-heading);
+      font-size: 0.8rem; font-weight: 600;
+      letter-spacing: 0.08em; text-transform: uppercase;
+      text-decoration: none;
+      border: 1px solid rgba(229,193,88,0.35);
+      border-radius: 30px;
+      cursor: pointer;
+      backdrop-filter: blur(12px);
+      transition: all 0.35s cubic-bezier(0.2, 1, 0.3, 1);
+      display: inline-block;
+    }
+    .btn-outline:hover {
+      background: rgba(229,193,88,0.15);
+      border-color: var(--gold);
+      box-shadow: 0 10px 30px rgba(229,193,88,0.25);
+      transform: translateY(-3px) scale(1.02);
+    }
+
+    /* ===== SECTION COMMON ===== */
+    section { padding: 7.5rem 2rem; position: relative; }
+    .section-header { text-align: center; margin-bottom: 4.5rem; }
+    .section-tag {
+      font-family: var(--font-heading);
+      font-size: 0.7rem; font-weight: 700;
+      letter-spacing: 0.3em;
+      text-transform: uppercase; color: var(--turquoise);
+      display: block; margin-bottom: 0.9rem;
+    }
+    .section-title {
+      font-family: var(--font-display);
+      font-size: clamp(2rem, 4vw, 3rem);
+      font-weight: 700;
+      color: #FFFFFF; letter-spacing: -0.01em;
+      margin-bottom: 1.1rem;
+    }
+    .section-divider {
+      width: 70px; height: 2px;
+      background: linear-gradient(to right, transparent, var(--gold), transparent);
+      margin: 1.2rem auto;
+    }
+    .section-desc {
+      max-width: 600px; margin: 0 auto;
+      color: var(--sand); font-weight: 300; line-height: 1.85; font-size: 0.98rem;
+    }
+
+    /* ===== STATS ===== */
+    #stats {
+      padding: 2.5rem 2rem;
+      position: relative; z-index: 10;
+    }
+    .stats-container {
+      max-width: 1100px; margin: 0 auto;
+      padding: 2.5rem 3rem;
+      background: rgba(16, 12, 8, 0.45);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid rgba(229,193,88,0.25);
+      border-radius: 20px;
+      box-shadow: 0 20px 50px rgba(0,0,0,0.7), inset 0 1px 0 rgba(255,255,255,0.1);
+    }
+    .stats-grid {
+      display: grid; grid-template-columns: repeat(4, 1fr); gap: 2rem;
+    }
+    .stat-item { text-align: center; }
+    .stat-number {
+      font-family: var(--font-heading);
+      font-size: 2.8rem; font-weight: 800; color: var(--gold);
+      text-shadow: var(--glow); display: block;
+      margin-bottom: 0.3rem;
+    }
+    .stat-label {
+      font-family: var(--font-heading);
+      font-size: 0.75rem; font-weight: 500;
+      letter-spacing: 0.12em;
+      text-transform: uppercase; color: var(--sand);
+    }
+
+    /* ===== 3D INTERACTIVE VIEWER LAB ===== */
+    #viewer-3d {
+      background: radial-gradient(circle at 50% 30%, rgba(26,58,92,0.18) 0%, var(--obsidian) 70%);
+    }
+    .viewer-layout {
+      max-width: 1200px; margin: 0 auto;
+      display: grid; grid-template-columns: 1.25fr 0.85fr;
+      gap: 3rem; align-items: center;
+    }
+    .viewer-stage {
+      position: relative;
+      width: 100%; height: 520px;
+      background: radial-gradient(ellipse at center, rgba(28,21,14,0.5) 0%, rgba(10,8,6,0.9) 80%);
+      backdrop-filter: blur(16px);
+      border: 1px solid rgba(229,193,88,0.3);
+      border-radius: 20px;
+      box-shadow: 0 25px 60px rgba(0,0,0,0.8), inset 0 1px 0 rgba(255,255,255,0.15);
+      overflow: hidden;
+    }
+    #interactive-3d-canvas {
+      width: 100%; height: 100%;
+      cursor: grab;
+    }
+    #interactive-3d-canvas:active { cursor: grabbing; }
+    
+    .viewer-badge-top {
+      position: absolute; top: 1.2rem; left: 1.2rem;
+      background: rgba(14, 11, 8, 0.75);
+      border: 1px solid rgba(229,193,88,0.3);
+      padding: 0.4rem 0.9rem;
+      border-radius: 20px;
+      font-family: var(--font-heading); font-size: 0.7rem; font-weight: 600;
+      letter-spacing: 0.1em; color: var(--turquoise);
+      backdrop-filter: blur(10px);
+      z-index: 2;
+    }
+    .viewer-controls-bar {
+      position: absolute; bottom: 1.2rem; left: 50%; transform: translateX(-50%);
+      display: flex; gap: 0.5rem;
+      background: rgba(14, 11, 8, 0.8);
+      border: 1px solid rgba(229,193,88,0.3);
+      padding: 0.4rem 0.8rem;
+      border-radius: 40px;
+      backdrop-filter: blur(16px);
+      z-index: 2;
+    }
+    .viewer-tab-btn {
+      background: none; border: none;
+      color: var(--sand);
+      font-family: var(--font-heading); font-size: 0.75rem; font-weight: 600;
+      padding: 0.5rem 1rem; cursor: pointer;
+      border-radius: 25px; transition: all 0.3s;
+    }
+    .viewer-tab-btn.active {
+      background: var(--gold); color: #080706;
+      box-shadow: 0 0 20px rgba(229,193,88,0.5);
+    }
+
+    .viewer-info-panel {
+      padding: 2.5rem;
+      background: var(--glass-bg);
+      backdrop-filter: blur(16px);
+      border: 1px solid var(--glass-border);
+      border-radius: 20px;
+      box-shadow: var(--glass-shadow);
+    }
+    .viewer-info-panel h3 {
+      font-family: var(--font-display);
+      font-size: 1.65rem; font-weight: 700; color: #FFF;
+      margin-bottom: 0.5rem;
+    }
+    .viewer-info-subtitle {
+      font-family: var(--font-heading);
+      font-size: 0.8rem; font-weight: 600;
+      letter-spacing: 0.15em;
+      color: var(--turquoise); margin-bottom: 1.2rem; text-transform: uppercase;
+    }
+    .viewer-info-text {
+      font-size: 0.95rem; line-height: 1.85;
+      color: var(--sand); font-weight: 300;
+      margin-bottom: 1.8rem;
+    }
+    .viewer-specs {
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 0.9rem; margin-bottom: 2rem;
+    }
+    .spec-card {
+      background: rgba(229,193,88,0.04);
+      border: 1px solid rgba(229,193,88,0.18);
+      border-radius: 10px;
+      padding: 0.9rem 1.1rem;
+    }
+    .spec-label {
+      font-family: var(--font-heading); font-size: 0.65rem; font-weight: 600;
+      letter-spacing: 0.12em; text-transform: uppercase;
+      color: rgba(229,193,88,0.8); display: block; margin-bottom: 0.25rem;
+    }
+    .spec-val {
+      font-size: 0.92rem; color: #FFF; font-weight: 500;
+    }
+
+    /* ===== LIVING ARTIFACTS ===== */
+    #artifacts {
+      background: radial-gradient(ellipse at center, rgba(16,12,8,0.7), rgba(8,7,6,0.98));
+      perspective: 1000px;
+    }
+    .artifacts-grid {
+      max-width: 1240px; margin: 0 auto;
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 2.5rem;
+    }
+    .artifact-card {
+      position: relative;
+      background: rgba(18, 14, 10, 0.45);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(229,193,88,0.2);
+      border-radius: 16px;
+      overflow: hidden; cursor: pointer;
+      transition: border-color 0.4s, box-shadow 0.4s, transform 0.2s ease-out;
+      transform-style: preserve-3d;
+      box-shadow: 0 15px 40px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.1);
+    }
+    .artifact-card:hover {
+      border-color: rgba(229,193,88,0.6);
+      box-shadow: 0 25px 60px rgba(0,0,0,0.8), 0 0 35px rgba(229,193,88,0.2), var(--glow-magic);
+    }
+    .artifact-img-wrap {
+      width: 100%; height: 260px;
+      position: relative; overflow: hidden;
+      background: #080604;
+    }
+    .artifact-img-wrap img {
+      width: 100%; height: 100%;
+      object-fit: cover;
+      transition: transform 0.7s cubic-bezier(0.2, 1, 0.3, 1), filter 0.5s ease;
+      filter: brightness(0.9) contrast(1.1);
+    }
+    .artifact-card:hover .artifact-img-wrap img {
+      transform: scale(1.1);
+      filter: brightness(1.05) contrast(1.15);
+    }
+    .artifact-3d-glare {
+      position: absolute; inset: 0;
+      background: linear-gradient(125deg, rgba(255,255,255,0.18) 0%, transparent 50%, rgba(229,193,88,0.1) 100%);
+      pointer-events: none;
+      opacity: 0.4;
+      transition: opacity 0.4s;
+    }
+    .artifact-card:hover .artifact-3d-glare { opacity: 0.8; }
+    
+    .artifact-card::after {
+      content: '';
+      position: absolute;
+      inset: -2px;
+      border-radius: 18px;
+      background: linear-gradient(135deg, var(--turquoise), var(--gold), var(--magic-glow));
+      opacity: 0;
+      z-index: -1;
+      transition: opacity 0.6s ease;
+      animation: livingGlow 3s ease-in-out infinite;
+    }
+    .artifact-card:hover::after {
+      opacity: 0.6;
+    }
+    @keyframes livingGlow {
+      0%, 100% { filter: hue-rotate(0deg); }
+      50% { filter: hue-rotate(30deg); }
+    }
+    
+    .artifact-badge-3d {
+      position: absolute; top: 1rem; left: 1rem;
+      font-family: var(--font-heading); font-size: 0.6rem; font-weight: 600;
+      letter-spacing: 0.12em; text-transform: uppercase;
+      padding: 0.35rem 0.8rem;
+      background: rgba(10,8,6,0.75);
+      border: 1px solid rgba(229,193,88,0.4);
+      border-radius: 20px;
+      color: var(--gold);
+      backdrop-filter: blur(8px);
+      z-index: 2;
+    }
+    .artifact-era {
+      position: absolute; top: 1rem; right: 1rem;
+      font-family: var(--font-heading);
+      font-size: 0.6rem; font-weight: 600; letter-spacing: 0.1em;
+      text-transform: uppercase;
+      padding: 0.35rem 0.8rem;
+      background: rgba(0,229,255,0.15);
+      border: 1px solid rgba(0,229,255,0.4);
+      border-radius: 20px;
+      color: var(--turquoise);
+      backdrop-filter: blur(8px);
+      z-index: 2;
+    }
+    .artifact-body { padding: 1.8rem; transform: translateZ(20px); }
+    .artifact-name {
+      font-family: var(--font-display);
+      font-size: 1.15rem; font-weight: 700; color: #FFF; margin-bottom: 0.6rem;
+      letter-spacing: 0.02em;
+    }
+    .artifact-desc {
+      font-size: 0.9rem; color: var(--sand);
+      line-height: 1.75; font-weight: 300;
+    }
+    .artifact-meta {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-top: 1.4rem; padding-top: 1.1rem;
+      border-top: 1px solid rgba(229,193,88,0.15);
+    }
+    .artifact-date {
+      font-family: var(--font-heading);
+      font-size: 0.7rem; color: rgba(246,238,219,0.7); letter-spacing: 0.05em;
+    }
+    .artifact-btn {
+      font-family: var(--font-heading);
+      font-size: 0.7rem; font-weight: 600; letter-spacing: 0.1em;
+      text-transform: uppercase; color: var(--gold);
+      background: rgba(229,193,88,0.08); border: 1px solid rgba(229,193,88,0.35);
+      border-radius: 20px;
+      padding: 0.4rem 1.1rem; cursor: pointer;
+      transition: all 0.3s;
+    }
+    .artifact-btn:hover { background: var(--gold); color: #080706; box-shadow: var(--glow); }
+
+    /* ===== TIMELINE ===== */
+    #timeline { background: linear-gradient(180deg, var(--obsidian), #0d0b08 50%, var(--obsidian)); }
+    .timeline-container { max-width: 920px; margin: 0 auto; position: relative; }
+    .timeline-line {
+      position: absolute; left: 50%; top: 0;
+      transform: translateX(-50%);
+      width: 2px; height: 100%;
+      background: linear-gradient(to bottom, transparent, var(--gold-dark), var(--gold), var(--gold-dark), transparent);
+      box-shadow: 0 0 14px rgba(229,193,88,0.4);
+    }
+    .timeline-item {
+      display: flex; align-items: flex-start; gap: 2.2rem;
+      margin-bottom: 4.5rem; position: relative;
+      opacity: 0; transform: translateY(28px);
+      transition: all 0.6s ease;
+    }
+    .timeline-item.visible { opacity: 1; transform: translateY(0); }
+    .timeline-item:nth-child(even) { flex-direction: row-reverse; }
+    .timeline-content {
+      flex: 1;
+      background: rgba(18, 14, 10, 0.5);
+      border: 1px solid rgba(229,193,88,0.22);
+      border-radius: 16px;
+      padding: 2rem; backdrop-filter: blur(16px);
+      box-shadow: 0 15px 40px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.1);
+      transition: border-color 0.3s, box-shadow 0.3s;
+    }
+    .timeline-content:hover {
+      border-color: rgba(229,193,88,0.55);
+      box-shadow: 0 20px 50px rgba(0,0,0,0.8), 0 0 25px rgba(229,193,88,0.15);
+    }
+    .timeline-dot {
+      width: 52px; height: 52px; min-width: 52px;
+      background: radial-gradient(circle, var(--gold), var(--gold-dark));
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.4rem;
+      box-shadow: 0 0 25px rgba(229,193,88,0.6), 0 0 50px rgba(229,193,88,0.25);
+      position: relative; z-index: 2; align-self: center;
+    }
+    .timeline-year {
+      font-family: var(--font-heading);
+      font-size: 1.1rem; font-weight: 700; color: var(--gold); margin-bottom: 0.4rem;
+    }
+    .timeline-title {
+      font-family: var(--font-display);
+      font-size: 1.1rem; font-weight: 700; color: #FFF; margin-bottom: 0.6rem;
+    }
+    .timeline-text { font-size: 0.92rem; color: var(--sand); line-height: 1.85; font-weight: 300; }
+
+    /* ===== EXHIBITIONS ===== */
+    #exhibitions { background: radial-gradient(ellipse at 50% 50%, rgba(26,58,92,0.15), var(--obsidian) 70%); }
+    .exhibitions-grid {
+      max-width: 1180px; margin: 0 auto;
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 2.2rem;
+    }
+    .exhibition-card {
+      position: relative; overflow: hidden;
+      background: rgba(18, 14, 10, 0.45);
+      border: 1px solid rgba(229,193,88,0.2);
+      border-radius: 16px;
+      backdrop-filter: blur(16px);
+      box-shadow: 0 15px 40px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.1);
+      cursor: pointer; transition: all 0.4s ease;
+    }
+    .exhibition-card:hover { transform: translateY(-6px); border-color: rgba(229,193,88,0.6); box-shadow: 0 20px 50px rgba(0,0,0,0.8); }
+    .ex-bg {
+      height: 240px; position: relative; overflow: hidden;
+    }
+    .ex-bg img {
+      width: 100%; height: 100%; object-fit: cover;
+      transition: transform 0.6s ease; filter: brightness(0.85);
+    }
+    .exhibition-card:hover .ex-bg img { transform: scale(1.08); filter: brightness(1); }
+    .ex-overlay {
+      position: absolute; inset: 0;
+      background: linear-gradient(to top, rgba(10,8,6,0.95), rgba(10,8,6,0.15));
+      opacity: 0.7; transition: opacity 0.4s;
+    }
+    .ex-badge {
+      position: absolute; top: 1rem; left: 1rem;
+      font-family: var(--font-heading);
+      font-size: 0.6rem; font-weight: 600; letter-spacing: 0.12em;
+      text-transform: uppercase; padding: 0.35rem 0.85rem; z-index: 3;
+      border-radius: 20px;
+      backdrop-filter: blur(8px);
+    }
+    .badge-live { background: rgba(0,229,255,0.18); border: 1px solid rgba(0,229,255,0.45); color: var(--turquoise); }
+    .badge-new  { background: rgba(229,193,88,0.18); border: 1px solid rgba(229,193,88,0.45); color: var(--gold); }
+    .badge-vr   { background: rgba(180,80,255,0.18); border: 1px solid rgba(180,80,255,0.45); color: #d090ff; }
+    .ex-body { padding: 1.8rem; }
+    .ex-title { 
+      font-family: var(--font-display); 
+      font-size: 1.15rem; 
+      font-weight: 700; 
+      color: #FFF; 
+      margin-bottom: 0.5rem; 
+    }
+    .ex-desc { font-size: 0.9rem; color: var(--sand); line-height: 1.75; font-weight: 300; margin-bottom: 1.2rem; }
+    .ex-footer { display: flex; align-items: center; justify-content: space-between; }
+    .ex-date { font-family: var(--font-heading); font-size: 0.7rem; color: rgba(246,238,219,0.7); }
+    .ex-arrow {
+      width: 34px; height: 34px;
+      border: 1px solid rgba(229,193,88,0.35); border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      color: var(--gold); font-size: 0.9rem; transition: all 0.3s;
+    }
+    .exhibition-card:hover .ex-arrow { background: var(--gold); color: #080706; }
+
+    /* ===== LIVING 3D GALLERY - VIDEO ONLY ===== */
+    #gallery { 
+      background: var(--deep);
+      position: relative;
+    }
+    #gallery::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(circle at 30% 40%, rgba(255,107,157,0.03), transparent 50%),
+                  radial-gradient(circle at 70% 60%, rgba(0,229,255,0.03), transparent 50%);
+      pointer-events: none;
+      z-index: 1;
+    }
+    .gallery-grid {
+      max-width: 1180px; margin: 0 auto;
+      display: grid; grid-template-columns: repeat(12, 1fr); gap: 1.2rem;
+      position: relative;
+      z-index: 2;
+    }
+    .gallery-item {
+      overflow: hidden;
+      border: 1px solid rgba(229,193,88,0.18);
+      border-radius: 16px;
+      cursor: pointer; position: relative;
+      background: rgba(18, 14, 10, 0.4);
+      backdrop-filter: blur(12px);
+      box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+      transition: border-color 0.3s, transform 0.4s;
+    }
+    .gallery-item:hover { 
+      border-color: rgba(229,193,88,0.6); 
+      transform: translateY(-4px) scale(1.02); 
+      z-index: 2;
+      box-shadow: 0 20px 50px rgba(0,0,0,0.7), var(--glow-magic);
+    }
+    .g1 { grid-column: span 5; }
+    .g2 { grid-column: span 7; }
+    .g3 { grid-column: span 4; }
+    .g4 { grid-column: span 4; }
+    .g5 { grid-column: span 4; }
+    .g6 { grid-column: span 6; }
+    .g7 { grid-column: span 6; }
+    .gallery-inner {
+      height: 280px; position: relative; overflow: hidden;
+      background: #0a0806;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .g1 .gallery-inner { height: 350px; }
+    .g2 .gallery-inner { height: 350px; }
+    
+    /* Video styling inside gallery */
+    .gallery-inner video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transition: transform 0.7s ease, filter 0.5s ease;
+      filter: brightness(0.9);
+    }
+    .gallery-item:hover .gallery-inner video { 
+      transform: scale(1.08); 
+      filter: brightness(1.05);
+    }
+    
+    /* Video placeholder - shows when no video source */
+    .video-placeholder {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: radial-gradient(ellipse at center, rgba(229,193,88,0.05), rgba(10,8,6,0.9));
+      color: var(--sand);
+      font-family: var(--font-heading);
+      font-size: 0.85rem;
+      font-weight: 500;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      text-align: center;
+      padding: 2rem;
+      gap: 0.8rem;
+    }
+    .video-placeholder .icon {
+      font-size: 3rem;
+      opacity: 0.4;
+      animation: pulseIcon 2s ease-in-out infinite;
+    }
+    @keyframes pulseIcon {
+      0%, 100% { opacity: 0.3; transform: scale(1); }
+      50% { opacity: 0.6; transform: scale(1.05); }
+    }
+    .video-placeholder .sub {
+      font-size: 0.6rem;
+      opacity: 0.5;
+      font-weight: 300;
+      letter-spacing: 0.15em;
+    }
+    
+    .gallery-item .living-overlay {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, 
+        rgba(255,107,157,0.0) 0%, 
+        rgba(229,193,88,0.0) 50%, 
+        rgba(0,229,255,0.0) 100%);
+      transition: all 0.6s ease;
+      pointer-events: none;
+      z-index: 2;
+    }
+    .gallery-item:hover .living-overlay {
+      background: linear-gradient(135deg, 
+        rgba(255,107,157,0.05) 0%, 
+        rgba(229,193,88,0.08) 50%, 
+        rgba(0,229,255,0.05) 100%);
+      animation: livingPulse 2s ease-in-out infinite;
+    }
+    @keyframes livingPulse {
+      0%, 100% { opacity: 0.5; }
+      50% { opacity: 1; }
+    }
+    
+    .gallery-caption {
+      position: absolute; bottom: 0; inset-inline: 0;
+      padding: 1.2rem 1.2rem 1rem;
+      background: linear-gradient(to top, rgba(8,7,6,0.95), transparent);
+      font-family: var(--font-heading); font-size: 0.8rem; font-weight: 600;
+      letter-spacing: 0.05em; color: #FFF;
+      transform: translateY(100%);
+      transition: transform 0.3s ease;
+      z-index: 3;
+    }
+    .gallery-item:hover .gallery-caption { transform: translateY(0); }
+    
+    .gallery-live-badge {
+      position: absolute;
+      top: 1rem;
+      right: 1rem;
+      padding: 0.3rem 0.9rem;
+      background: rgba(255,107,157,0.2);
+      border: 1px solid rgba(255,107,157,0.4);
+      border-radius: 20px;
+      font-family: var(--font-heading);
+      font-size: 0.55rem;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--magic-glow);
+      backdrop-filter: blur(8px);
+      z-index: 4;
+      opacity: 0;
+      transform: translateY(-10px);
+      transition: all 0.4s ease;
+      box-shadow: 0 0 20px rgba(255,107,157,0.2);
+    }
+    .gallery-item:hover .gallery-live-badge {
+      opacity: 1;
+      transform: translateY(0);
+      animation: badgePulse 1.5s ease-in-out infinite;
+    }
+    @keyframes badgePulse {
+      0%, 100% { box-shadow: 0 0 20px rgba(255,107,157,0.2); }
+      50% { box-shadow: 0 0 40px rgba(255,107,157,0.4); }
+    }
+
+    /* ===== NEWS & UPDATES ===== */
+    #news-updates {
+      padding: 7rem 2rem;
+      background: radial-gradient(ellipse at 50% 50%, rgba(0,229,255,0.03), transparent 70%);
+      text-align: center;
+    }
+    .updates-grid {
+      max-width: 1100px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 2rem;
+      margin-top: 3rem;
+    }
+    .update-card {
+      background: rgba(18, 14, 10, 0.45);
+      border: 1px solid rgba(229,193,88,0.2);
+      border-radius: 16px;
+      padding: 2rem 1.5rem;
+      backdrop-filter: blur(16px);
+      box-shadow: var(--glass-shadow);
+      transition: all 0.4s ease;
+      text-align: left;
+    }
+    .update-card:hover {
+      border-color: rgba(229,193,88,0.5);
+      transform: translateY(-4px);
+      box-shadow: 0 20px 50px rgba(0,0,0,0.6), var(--glow-magic);
+    }
+    .update-icon {
+      font-size: 2rem;
+      margin-bottom: 1rem;
+      display: block;
+    }
+    .update-card h4 {
+      font-family: var(--font-heading);
+      font-size: 1rem;
+      font-weight: 700;
+      color: #FFF;
+      margin-bottom: 0.6rem;
+      letter-spacing: 0.02em;
+    }
+    .update-card p {
+      color: var(--sand);
+      font-size: 0.9rem;
+      line-height: 1.75;
+      font-weight: 300;
+    }
+    .update-tag {
+      display: inline-block;
+      margin-top: 1rem;
+      padding: 0.25rem 0.9rem;
+      background: rgba(0,229,255,0.1);
+      border: 1px solid rgba(0,229,255,0.2);
+      border-radius: 20px;
+      font-family: var(--font-heading);
+      font-size: 0.6rem;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--turquoise);
+    }
+
+    /* ===== NEWSLETTER ===== */
+    #newsletter {
+      padding: 6rem 2rem; text-align: center;
+    }
+    .newsletter-inner {
+      max-width: 600px; margin: 0 auto;
+      padding: 3.5rem 2.5rem;
+      background: rgba(18, 14, 10, 0.55);
+      border: 1px solid rgba(229,193,88,0.25);
+      border-radius: 24px;
+      backdrop-filter: blur(20px);
+      box-shadow: var(--glass-shadow);
+    }
+    .newsletter-title {
+      font-family: var(--font-display);
+      font-size: clamp(1.6rem, 3.5vw, 2.2rem);
+      font-weight: 700; color: #FFF; margin-bottom: 0.8rem;
+    }
+    .newsletter-desc {
+      color: var(--sand); font-weight: 300; margin-bottom: 2.2rem;
+      font-size: 0.95rem; line-height: 1.75;
+    }
+    .newsletter-form { display: flex; gap: 0.6rem; flex-wrap: wrap; }
+    .newsletter-form input {
+      flex: 1; min-width: 240px; padding: 1rem 1.4rem;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(229,193,88,0.3);
+      border-radius: 30px;
+      color: #FFF; font-family: var(--font-body);
+      font-size: 0.92rem; outline: none; transition: border-color 0.3s;
+    }
+    .newsletter-form input:focus { border-color: var(--gold); box-shadow: 0 0 15px rgba(229,193,88,0.3); }
+    .newsletter-form input::placeholder { color: rgba(214,194,158,0.5); }
+    .newsletter-form button {
+      padding: 1rem 2rem;
+      background: linear-gradient(135deg, var(--gold-dark), var(--gold));
+      border: none; color: #080706;
+      font-family: var(--font-heading);
+      font-size: 0.75rem; font-weight: 700;
+      letter-spacing: 0.1em; text-transform: uppercase;
+      border-radius: 30px;
+      cursor: pointer; transition: all 0.3s;
+      white-space: nowrap;
+    }
+    .newsletter-form button:hover {
+      background: linear-gradient(135deg, var(--gold), var(--gold-light));
+      box-shadow: 0 0 25px rgba(229,193,88,0.5);
+    }
+
+    /* ===== FOOTER ===== */
+    footer {
+      padding: 5rem 3rem 2.5rem; background: #060504;
+      border-top: 1px solid rgba(229,193,88,0.12);
+    }
+    .footer-grid {
+      max-width: 1140px; margin: 0 auto;
+      display: grid; grid-template-columns: 2fr 1fr 1fr 1fr;
+      gap: 3rem; padding-bottom: 3rem;
+      border-bottom: 1px solid rgba(229,193,88,0.1);
+    }
+    .footer-brand .logo { display: inline-flex; margin-bottom: 1rem; }
+    .footer-brand p {
+      font-size: 0.88rem; color: rgba(214,194,158,0.6);
+      line-height: 1.8; font-weight: 300; max-width: 250px;
+    }
+    .footer-col h4 {
+      font-family: var(--font-heading); 
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 0.18em; text-transform: uppercase;
+      color: var(--gold); margin-bottom: 1.3rem;
+    }
+    .footer-col ul { list-style: none; }
+    .footer-col ul li { margin-bottom: 0.75rem; }
+    .footer-col ul li a {
+      font-size: 0.86rem; color: rgba(214,194,158,0.6);
+      text-decoration: none; transition: color 0.3s;
+      font-weight: 400;
+    }
+    .footer-col ul li a:hover { color: #FFF; }
+    .footer-bottom {
+      max-width: 1140px; margin: 2rem auto 0;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .footer-bottom p { font-size: 0.78rem; color: rgba(214,194,158,0.4); font-weight: 300; }
+    .social-links { display: flex; gap: 0.8rem; }
+    .social-link {
+      width: 36px; height: 36px;
+      border: 1px solid rgba(229,193,88,0.25);
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.9rem; color: rgba(214,194,158,0.6);
+      text-decoration: none; transition: all 0.3s;
+      background: rgba(255,255,255,0.02);
+    }
+    .social-link:hover { border-color: var(--gold); color: var(--gold); box-shadow: var(--glow); }
+
+    /* ===== MODAL ===== */
+    .modal-overlay {
+      position: fixed; inset: 0;
+      background: rgba(5,4,3,0.88);
+      z-index: 9000; display: none;
+      align-items: center; justify-content: center;
+      backdrop-filter: blur(16px);
+      opacity: 0; transition: opacity 0.3s;
+    }
+    .modal-overlay.active { display: flex; }
+    .modal-overlay.visible { opacity: 1; }
+    .modal {
+      background: rgba(16, 12, 8, 0.95);
+      border: 1px solid rgba(229,193,88,0.4);
+      border-radius: 20px;
+      max-width: 640px; width: 92%;
+      max-height: 90vh; overflow-y: auto;
+      transform: translateY(20px) scale(0.95);
+      transition: transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+      box-shadow: 0 25px 70px rgba(0,0,0,0.95), inset 0 1px 0 rgba(255,255,255,0.15);
+      position: relative;
+    }
+    .modal-overlay.visible .modal { transform: translateY(0) scale(1); }
+    
+    .modal::before {
+      content: '';
+      position: absolute;
+      inset: -2px;
+      border-radius: 22px;
+      background: linear-gradient(135deg, var(--turquoise), var(--gold), var(--magic-glow), var(--turquoise));
+      background-size: 300% 300%;
+      opacity: 0;
+      z-index: -1;
+      transition: opacity 0.8s ease;
+      animation: modalAwaken 3s ease-in-out infinite;
+    }
+    .modal-overlay.visible .modal::before {
+      opacity: 0.4;
+    }
+    @keyframes modalAwaken {
+      0% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+    
+    .modal-header {
+      padding: 1.8rem 2rem 1.2rem;
+      border-bottom: 1px solid rgba(229,193,88,0.15);
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .modal-title { 
+      font-family: var(--font-display); 
+      font-size: 1.3rem; 
+      color: #FFF; 
+      font-weight: 700;
+      text-shadow: 0 0 20px rgba(255,107,157,0.2);
+    }
+    .modal-close {
+      width: 36px; height: 36px;
+      border: 1px solid rgba(229,193,88,0.3); border-radius: 50%;
+      background: none; color: var(--gold); font-size: 1rem; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: all 0.3s;
+    }
+    .modal-close:hover { background: rgba(229,193,88,0.15); }
+    .modal-body { padding: 2rem; }
+    .modal-img-wrap {
+      width: 100%; height: 260px;
+      overflow: hidden; margin-bottom: 1.5rem;
+      border: 1px solid rgba(229,193,88,0.25);
+      border-radius: 12px;
+      position: relative;
+    }
+    .modal-img-wrap img { 
+      width: 100%; height: 100%; object-fit: cover;
+      transition: transform 0.6s ease;
+    }
+    .modal-overlay.visible .modal-img-wrap img {
+      animation: artifactAwaken 2s ease-out;
+    }
+    @keyframes artifactAwaken {
+      0% { transform: scale(1.1); filter: brightness(0.6) blur(2px); }
+      50% { transform: scale(1.05); filter: brightness(1.2) blur(0); }
+      100% { transform: scale(1); filter: brightness(1) blur(0); }
+    }
+    .modal-img-wrap::after {
+      content: '✨ History Comes Alive';
+      position: absolute;
+      bottom: 1rem;
+      right: 1rem;
+      padding: 0.3rem 1rem;
+      background: rgba(255,107,157,0.2);
+      border: 1px solid rgba(255,107,157,0.3);
+      border-radius: 20px;
+      font-family: var(--font-heading);
+      font-size: 0.55rem;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      color: var(--magic-glow);
+      backdrop-filter: blur(8px);
+      opacity: 0;
+      transition: opacity 0.6s ease;
+    }
+    .modal-overlay.visible .modal-img-wrap::after {
+      opacity: 1;
+      animation: badgePulse 1.5s ease-in-out infinite;
+    }
+    .modal-meta {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 0.8rem; margin-bottom: 1.5rem;
+    }
+    .modal-meta-item {
+      background: rgba(229,193,88,0.04);
+      border: 1px solid rgba(229,193,88,0.15);
+      border-radius: 8px; padding: 0.9rem;
+      transition: all 0.3s ease;
+    }
+    .modal-overlay.visible .modal-meta-item {
+      animation: metaReveal 0.6s ease forwards;
+    }
+    .modal-meta-item:nth-child(1) { animation-delay: 0.1s; }
+    .modal-meta-item:nth-child(2) { animation-delay: 0.2s; }
+    .modal-meta-item:nth-child(3) { animation-delay: 0.3s; }
+    .modal-meta-item:nth-child(4) { animation-delay: 0.4s; }
+    .modal-meta-item:nth-child(5) { animation-delay: 0.5s; }
+    @keyframes metaReveal {
+      0% { opacity: 0; transform: translateY(10px); }
+      100% { opacity: 1; transform: translateY(0); }
+    }
+    .modal-meta-label {
+      font-family: var(--font-heading); font-size: 0.65rem; font-weight: 600;
+      letter-spacing: 0.12em; text-transform: uppercase;
+      color: var(--turquoise); display: block; margin-bottom: 0.3rem;
+    }
+    .modal-meta-value { font-size: 0.92rem; color: #FFF; font-weight: 400; }
+    .modal-text { 
+      font-size: 0.94rem; 
+      color: var(--sand); 
+      line-height: 1.85; 
+      font-weight: 300;
+      animation: textReveal 0.8s ease 0.3s forwards;
+      opacity: 0;
+    }
+    @keyframes textReveal {
+      0% { opacity: 0; transform: translateY(10px); }
+      100% { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ===== LOADER ===== */
+    #loader {
+      position: fixed; inset: 0; z-index: 99000;
+      background: var(--obsidian);
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      transition: opacity 0.8s ease;
+    }
+    .loader-glyph { font-size: 4rem; animation: spin 3s linear infinite; filter: drop-shadow(0 0 20px rgba(229,193,88,0.6)); margin-bottom: 1.4rem; }
+    .loader-title { 
+      font-family: var(--font-heading); 
+      font-size: 1.1rem; 
+      font-weight: 700;
+      color: var(--gold); 
+      letter-spacing: 0.28em; 
+      margin-bottom: 1.8rem; 
+    }
+    .loader-bar-wrap { width: 200px; height: 2px; background: rgba(229,193,88,0.12); border-radius: 2px; }
+    .loader-bar { height: 100%; background: linear-gradient(to right, var(--gold-dark), var(--gold)); width: 0; box-shadow: var(--glow); transition: width 0.15s linear; }
+    .loader-pct { font-family: var(--font-heading); font-size: 0.75rem; color: rgba(229,193,88,0.6); margin-top: 0.8rem; letter-spacing: 0.15em; }
+
+    /* ===== ANIMATIONS ===== */
+    @keyframes fadeUp  { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes fadeIn  { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes spin    { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+    @keyframes scrollPulse { 0%,100% { opacity: 0.3; } 50% { opacity: 1; } }
+
+    /* ===== RESPONSIVE ===== */
+    @media (max-width: 960px) {
+      nav { width: calc(100% - 2rem); padding: 0.8rem 1.4rem; }
+      .nav-links { gap: 1.2rem; }
+      .viewer-layout { grid-template-columns: 1fr; }
+      .viewer-stage { height: 420px; }
+      .stats-grid { grid-template-columns: repeat(2, 1fr); }
+      .timeline-line { left: 24px; }
+      .timeline-item, .timeline-item:nth-child(even) { flex-direction: column; padding-left: 60px; }
+      .timeline-dot { position: absolute; left: 0; }
+      .footer-grid { grid-template-columns: 1fr 1fr; }
+    }
+    @media (max-width: 600px) {
+      .nav-links { display: none; }
+      .hero-cta { flex-direction: column; align-items: center; }
+      .stats-grid { grid-template-columns: 1fr; }
+      .video-controls { bottom: 1rem; right: 1rem; }
+      .footer-grid { grid-template-columns: 1fr; }
+      .gallery-grid { grid-template-columns: 1fr; }
+      .g1, .g2, .g3, .g4, .g5, .g6, .g7 { grid-column: span 12; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- LOADER -->
+<div id="loader">
+  <div class="loader-glyph">𓂀</div>
+  <div class="loader-title">EGYPT DIGITAL MUSEUM</div>
+  <div class="loader-bar-wrap"><div class="loader-bar" id="loader-bar"></div></div>
+  <div class="loader-pct" id="loader-pct">0%</div>
+</div>
+
+<!-- CURSORS -->
+<div class="cursor" id="cursor"></div>
+<div class="cursor-follower" id="cursor-follower"></div>
+
+<!-- THREE.JS BACKGROUND -->
+<canvas id="canvas-bg"></canvas>
+<div class="overlay"></div>
+
+<!-- CONTENT -->
+<div class="content">
+
+  <!-- NAV -->
+  <nav id="navbar">
+    <a href="#hero" class="logo">
+      <span class="logo-glyph">𓂀</span>
+      EGYPT <span>DIGITAL</span>
+    </a>
+    <ul class="nav-links">
+      <li><a href="#viewer-3d">3D Studio</a></li>
+      <li><a href="#artifacts">Living Artifacts</a></li>
+      <li><a href="#timeline">Timeline</a></li>
+      <li><a href="#exhibitions">Exhibitions</a></li>
+      <li><a href="#gallery">Living Gallery</a></li>
+      <li><a href="#newsletter">Visit</a></li>
+    </ul>
+  </nav>
+
+  <!-- HERO WITH CINEMATIC VIDEO -->
+  <section id="hero">
+    <div class="hero-video-container">
+      <video id="hero-bg-video" autoplay loop muted playsinline poster="https://images.unsplash.com/photo-1503177119275-0aa32b3a9368?auto=format&fit=crop&w=1920&q=80">
+        <source src="video.mp4" type="video/mp4">
+      </video>
+      <div class="hero-video-overlay"></div>
+    </div>
+
+    <div class="video-controls">
+      <button class="video-ctrl-btn" id="btn-video-toggle" onclick="toggleHeroVideo()">⏸ Pause</button>
+      <button class="video-ctrl-btn" id="btn-video-speed" onclick="toggleHeroVideoSpeed()">⚡ 1x</button>
+    </div>
+
+    <div class="video-badge">
+      <div class="pulse-dot"></div>
+      <span>Cinematic Archive · History Comes Alive</span>
+    </div>
+
+    <p class="hero-eyebrow">The Future of Ancient Wonders</p>
+    <h1 class="hero-title">
+      <span>EGYPT DIGITAL</span><br />
+      <span>MUSEUM</span>
+    </h1>
+    <p class="hero-subtitle">Where History Comes Alive in 3D</p>
+    <p class="hero-desc">Experience five millennia of civilization brought to life through volumetric 3D modeling, interactive artifact exploration, and cinematic visual landscapes — where the past awakens before your eyes.</p>
+
+    <div class="hero-cta">
+      <a href="#viewer-3d" class="btn-primary">Explore 3D Studio</a>
+      <a href="#artifacts" class="btn-outline">Inspect Living Artifacts</a>
+    </div>
+
+    <div class="scroll-indicator">
+      <span>Scroll to Discover</span>
+      <div class="scroll-line"></div>
+    </div>
+  </section>
+
+  <!-- STATS -->
+  <section id="stats">
+    <div class="stats-container">
+      <div class="stats-grid">
+        <div class="stat-item">
+          <span class="stat-number" data-target="3200">0</span>
+          <span class="stat-label">Years of History</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-number" data-target="7">0</span>
+          <span class="stat-label">3D Scanned Assets</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-number" data-target="7">0</span>
+          <span class="stat-label">Virtual Galleries</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-number" data-target="10">0</span>
+          <span class="stat-label">Global Visitors</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 3D INTERACTIVE VIEWER LAB -->
+  <section id="viewer-3d">
+    <div class="section-header">
+      <span class="section-tag">Real-Time 3D Studio</span>
+      <h2 class="section-title">Interactive Holographic Lab</h2>
+      <div class="section-divider"></div>
+      <p class="section-desc">Click &amp; drag anywhere inside the frosted glass viewport to rotate sacred relics in full 360 degrees. Watch as history comes alive with dynamic lighting and volumetric detail.</p>
+    </div>
+
+    <div class="viewer-layout">
+      <div class="viewer-stage">
+        <span class="viewer-badge-top" id="viewer-model-tag">360° Volumetric Scan · Living History</span>
+        <canvas id="interactive-3d-canvas"></canvas>
+        <div class="viewer-controls-bar">
+          <button class="viewer-tab-btn active" onclick="switch3DModel('mask', this)">Tutankhamun</button>
+          <button class="viewer-tab-btn" onclick="switch3DModel('pyramid', this)">Great Pyramid</button>
+          <button class="viewer-tab-btn" onclick="switch3DModel('ankh', this)">Sacred Ankh</button>
+          <button class="viewer-tab-btn" onclick="switch3DModel('obelisk', this)">Luxor Obelisk</button>
+        </div>
+      </div>
+
+      <div class="viewer-info-panel">
+        <h3 id="viewer-title">Mask of Tutankhamun</h3>
+        <p class="viewer-info-subtitle" id="viewer-subtitle">Dynasty XVIII · Gold &amp; Lapis Lazuli</p>
+        <p class="viewer-info-text" id="viewer-desc">Crafted from two beaten gold plates weighing over 10 kg, inlaid with semiprecious lapis lazuli and carnelian. The death mask of Tutankhamun guaranteed the preservation of his identity for eternal judgment.</p>
+        
+        <div class="viewer-specs">
+          <div class="spec-card">
+            <span class="spec-label">Era</span>
+            <span class="spec-val" id="viewer-spec-era">1323 BCE</span>
+          </div>
+          <div class="spec-card">
+            <span class="spec-label">Scan Resolution</span>
+            <span class="spec-val" id="viewer-spec-res">0.05 mm LiDAR</span>
+          </div>
+          <div class="spec-card">
+            <span class="spec-label">Origin Location</span>
+            <span class="spec-val" id="viewer-spec-loc">KV62, Valley of Kings</span>
+          </div>
+          <div class="spec-card">
+            <span class="spec-label">Material</span>
+            <span class="spec-val" id="viewer-spec-mat">24K Gold Alloy</span>
+          </div>
+        </div>
+
+        <button class="btn-primary" onclick="triggerArtifactInspect()">Examine Full Spectrum</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- LIVING ARTIFACTS -->
+  <section id="artifacts">
+    <div class="section-header">
+      <span class="section-tag">Living Artifacts Archive</span>
+      <h2 class="section-title">History Comes Alive in 3D</h2>
+      <div class="section-divider"></div>
+      <p class="section-desc">Move your cursor across each card to witness artifacts awaken with dynamic 3D depth, glowing energy, and cinematic presence. Each relic tells a story that transcends time.</p>
+    </div>
+
+    <div class="artifacts-grid">
+
+      <div class="artifact-card" data-tilt onclick="openModal('mask')">
+        <div class="artifact-img-wrap">
+          <img src="mask.jpg" alt="Tutankhamun Golden Mask 3D" loading="lazy" />
+          <div class="artifact-3d-glare"></div>
+          <span class="artifact-badge-3d">Living 3D</span>
+          <span class="artifact-era">New Kingdom</span>
+        </div>
+        <div class="artifact-body">
+          <h3 class="artifact-name">Mask of Tutankhamun</h3>
+          <p class="artifact-desc">The celebrated death mask of the boy pharaoh, crafted from solid high-karat gold inlaid with precious lapis lazuli, turquoise, and carnelian.</p>
+          <div class="artifact-meta">
+            <span class="artifact-date">c. 1323 BCE · Valley of Kings</span>
+            <button class="artifact-btn">Inspect 3D →</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="artifact-card" data-tilt onclick="openModal('pyramid')">
+        <div class="artifact-img-wrap">
+          <img src="giza.jpg" alt="Great Pyramid of Giza 3D" loading="lazy" />
+          <div class="artifact-3d-glare"></div>
+          <span class="artifact-badge-3d">Living 3D</span>
+          <span class="artifact-era">Old Kingdom</span>
+        </div>
+        <div class="artifact-body">
+          <h3 class="artifact-name">Great Pyramid of Khufu</h3>
+          <p class="artifact-desc">Constructed from 2.3 million megalithic limestone blocks aligned to true north with an accuracy of one-tenth of a degree.</p>
+          <div class="artifact-meta">
+            <span class="artifact-date">c. 2560 BCE · Giza Plateau</span>
+            <button class="artifact-btn">Inspect 3D →</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="artifact-card" data-tilt onclick="openModal('sphinx')">
+        <div class="artifact-img-wrap">
+          <img src="https://images.unsplash.com/photo-1568322445389-f64ac2515020?auto=format&fit=crop&w=800&q=80" alt="Great Sphinx of Giza 3D" loading="lazy" />
+          <div class="artifact-3d-glare"></div>
+          <span class="artifact-badge-3d">Living 3D</span>
+          <span class="artifact-era">Old Kingdom</span>
+        </div>
+        <div class="artifact-body">
+          <h3 class="artifact-name">The Great Sphinx</h3>
+          <p class="artifact-desc">Monolithic limestone statue depicting a mythical creature with the body of a lion and the head of a pharaoh, guarding the necropolis.</p>
+          <div class="artifact-meta">
+            <span class="artifact-date">c. 2500 BCE · Giza</span>
+            <button class="artifact-btn">Inspect 3D →</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="artifact-card" data-tilt onclick="openModal('stele')">
+        <div class="artifact-img-wrap">
+          <img src="stone.jpg" alt="Rosetta Stone 3D" loading="lazy" />
+          <div class="artifact-3d-glare"></div>
+          <span class="artifact-badge-3d">Living 3D</span>
+          <span class="artifact-era">Ptolemaic</span>
+        </div>
+        <div class="artifact-body">
+          <h3 class="artifact-name">The Rosetta Stone</h3>
+          <p class="artifact-desc">Granodiorite stele inscribed with three translations of a Memphis decree — the archaeological cipher that unlocked ancient hieroglyphs.</p>
+          <div class="artifact-meta">
+            <span class="artifact-date">196 BCE · Rashid (Rosetta)</span>
+            <button class="artifact-btn">Inspect 3D →</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="artifact-card" data-tilt onclick="openModal('ankh')">
+        <div class="artifact-img-wrap">
+          <img src="Golden Ankh.jpg" alt="Golden Ankh 3D" loading="lazy" />
+          <div class="artifact-3d-glare"></div>
+          <span class="artifact-badge-3d">Living 3D</span>
+          <span class="artifact-era">New Kingdom</span>
+        </div>
+        <div class="artifact-body">
+          <h3 class="artifact-name">Sacred Golden Ankh</h3>
+          <p class="artifact-desc">Sacred symbol representing eternal life and divine energy, wielded by deities and royalty in spiritual coronation ceremonies.</p>
+          <div class="artifact-meta">
+            <span class="artifact-date">c. 1350 BCE · Luxor</span>
+            <button class="artifact-btn">Inspect 3D →</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="artifact-card" data-tilt onclick="openModal('papyrus')">
+        <div class="artifact-img-wrap">
+          <img src="Papyrus of Ani.jpg" alt="Papyrus of Ani 3D" loading="lazy" />
+          <div class="artifact-3d-glare"></div>
+          <span class="artifact-badge-3d">Living 3D</span>
+          <span class="artifact-era">New Kingdom</span>
+        </div>
+        <div class="artifact-body">
+          <h3 class="artifact-name">Papyrus of the Duat</h3>
+          <p class="artifact-desc">Exquisite illustrated funerary papyrus depicting the Weighing of the Heart before Osiris and the 42 divine judges of the underworld.</p>
+          <div class="artifact-meta">
+            <span class="artifact-date">c. 1275 BCE · Thebes</span>
+            <button class="artifact-btn">Inspect 3D →</button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- TIMELINE -->
+  <section id="timeline">
+    <div class="section-header">
+      <span class="section-tag">Chronological Architecture</span>
+      <h2 class="section-title">Journey Through Time</h2>
+      <div class="section-divider"></div>
+      <p class="section-desc">Five thousand years of civilization — from the first pharaoh to the last hieroglyph.</p>
+    </div>
+    <div class="timeline-container">
+      <div class="timeline-line"></div>
+      <div class="timeline-item">
+        <div class="timeline-content">
+          <div class="timeline-year">3100 BCE</div>
+          <div class="timeline-title">Unification of Egypt</div>
+          <p class="timeline-text">King Menes unites Upper and Lower Egypt, establishing the First Dynasty and founding the ancient Egyptian civilization along the Nile Valley — the birth of a 3,000-year empire.</p>
+        </div>
+        <div class="timeline-dot">𓋾</div>
+        <div style="flex:1"></div>
+      </div>
+      <div class="timeline-item">
+        <div style="flex:1"></div>
+        <div class="timeline-dot">𓇳</div>
+        <div class="timeline-content">
+          <div class="timeline-year">2560 BCE</div>
+          <div class="timeline-title">Great Pyramid of Giza</div>
+          <p class="timeline-text">Pharaoh Khufu completes the Great Pyramid — one of the Seven Wonders of the Ancient World. Nearly 2.3 million stone blocks, some weighing up to 80 tons, assembled with astonishing precision.</p>
+        </div>
+      </div>
+      <div class="timeline-item">
+        <div class="timeline-content">
+          <div class="timeline-year">1274 BCE</div>
+          <div class="timeline-title">Battle of Kadesh</div>
+          <p class="timeline-text">Ramesses II leads Egyptian forces against the Hittites at Kadesh, resulting in the world's earliest recorded peace treaty — inscribed in both hieroglyphs and cuneiform on silver tablets.</p>
+        </div>
+        <div class="timeline-dot">⚔️</div>
+        <div style="flex:1"></div>
+      </div>
+      <div class="timeline-item">
+        <div style="flex:1"></div>
+        <div class="timeline-dot">𓁿</div>
+        <div class="timeline-content">
+          <div class="timeline-year">1323 BCE</div>
+          <div class="timeline-title">Tutankhamun's Reign</div>
+          <p class="timeline-text">The boy pharaoh Tutankhamun restored traditional Egyptian religion. His intact tomb, discovered by Howard Carter in 1922, revolutionized Egyptology and captured the world's imagination.</p>
+        </div>
+      </div>
+      <div class="timeline-item">
+        <div class="timeline-content">
+          <div class="timeline-year">332 BCE</div>
+          <div class="timeline-title">Alexander the Great</div>
+          <p class="timeline-text">Alexander conquers Egypt, founding Alexandria. The Ptolemaic dynasty begins, blending Greek and Egyptian culture — creating a new era of art, science, and philosophical inquiry.</p>
+        </div>
+        <div class="timeline-dot">🏛️</div>
+        <div style="flex:1"></div>
+      </div>
+      <div class="timeline-item">
+        <div style="flex:1"></div>
+        <div class="timeline-dot">𓆄</div>
+        <div class="timeline-content">
+          <div class="timeline-year">30 BCE</div>
+          <div class="timeline-title">End of Ancient Egypt</div>
+          <p class="timeline-text">Cleopatra VII, the last pharaoh, dies. Egypt becomes a Roman province, ending 3,000 years of pharaonic rule — but the legacy of Egyptian civilization endures for all of eternity.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- EXHIBITIONS -->
+  <section id="exhibitions">
+    <div class="section-header">
+      <span class="section-tag">Immersive Pavilions</span>
+      <h2 class="section-title">Current 3D Exhibitions</h2>
+      <div class="section-divider"></div>
+      <p class="section-desc">Walk through real-time virtual pavilions reconstructed from archaeological lidar surveys and architectural plans.</p>
+    </div>
+    <div class="exhibitions-grid">
+      <div class="exhibition-card">
+        <div class="ex-bg">
+          <img src="Tomb.jpg" alt="Tomb of Tutankhamun" loading="lazy">
+          <div class="ex-overlay"></div>
+        </div>
+        <span class="ex-badge badge-live">Live In 3D</span>
+        <div class="ex-body">
+          <h3 class="ex-title">Secrets of the Golden Tomb</h3>
+          <p class="ex-desc">Step inside the fully rendered KV62 burial chamber with interactive illumination and dynamic shadow mapping.</p>
+          <div class="ex-footer"><span class="ex-date">Through Dec 31, 2026</span><span class="ex-arrow">→</span></div>
+        </div>
+      </div>
+      <div class="exhibition-card">
+        <div class="ex-bg">
+          <img src="giza.jpg" alt="Pyramid Construction 3D" loading="lazy">
+          <div class="ex-overlay"></div>
+        </div>
+        <span class="ex-badge badge-new">New Exhibition</span>
+        <div class="ex-body">
+          <h3 class="ex-title">Building the Pyramids</h3>
+          <p class="ex-desc">Explore internal shafts, the Grand Gallery, and Queen's Chamber using spatial 3D architectural cross-sections.</p>
+          <div class="ex-footer"><span class="ex-date">Sep 15 — Mar 2027</span><span class="ex-arrow">→</span></div>
+        </div>
+      </div>
+      <div class="exhibition-card">
+        <div class="ex-bg">
+          <img src="https://images.unsplash.com/photo-1568322445389-f64ac2515020?auto=format&fit=crop&w=700&q=80" alt="Sphinx at Sunset 3D" loading="lazy">
+          <div class="ex-overlay"></div>
+        </div>
+        <span class="ex-badge badge-vr">WebVR Mode</span>
+        <div class="ex-body">
+          <h3 class="ex-title">Guardian of the Necropolis</h3>
+          <p class="ex-desc">Experience the Great Sphinx across the millennia through historical digital time-lapse reconstruction.</p>
+          <div class="ex-footer"><span class="ex-date">Permanent Archive</span><span class="ex-arrow">→</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- LIVING 3D GALLERY - VIDEO ONLY -->
+  <section id="gallery">
+    <div class="section-header">
+      <span class="section-tag">Living Visual Archive</span>
+      <h2 class="section-title">History Awakens in 3D</h2>
+      <div class="section-divider"></div>
+      <p class="section-desc">Each gallery item features a 3D video scan of an ancient artifact — watch as history comes alive through cinematic volumetric capture.</p>
+    </div>
+    <div class="gallery-grid">
+      
+      <!-- GALLERY ITEM 1 - Tutankhamun Mask Video -->
+      <div class="gallery-item g1">
+        <div class="gallery-inner">
+          <video autoplay loop muted playsinline poster="">
+            <source src="mask.mp4" type="video/mp4">
+          </video>
+          <!-- Placeholder shown when no video source -->
+          
+          <div class="living-overlay"></div>
+          <span class="gallery-live-badge">● Living 3D</span>
+          <div class="gallery-caption">Tutankhamun Mask</div>
+        </div>
+      </div>
+
+      <!-- GALLERY ITEM 2 - Pyramids Video -->
+      <div class="gallery-item g2">
+        <div class="gallery-inner">
+          <video autoplay loop muted playsinline poster="">
+            <source src="Pyramid.mp4" type="video/mp4">
+          </video>
+          <div class="living-overlay"></div>
+          <span class="gallery-live-badge">● Living 3D</span>
+          <div class="gallery-caption">Giza Necropolis</div>
+        </div>
+      </div>
+
+      <!-- GALLERY ITEM 3 - Sphinx Video -->
+      <div class="gallery-item g3">
+        <div class="gallery-inner">
+          <video autoplay loop muted playsinline poster="">
+            <source src="giza.mp4" type="video/mp4">
+          </video>
+          <div class="living-overlay"></div>
+          <span class="gallery-live-badge">● Living 3D</span>
+          <div class="gallery-caption">Great Sphinx </div>
+        </div>
+      </div>
+
+      <!-- GALLERY ITEM 4 - Reliquary Video -->
+      <div class="gallery-item g4">
+        <div class="gallery-inner">
+          <video autoplay loop muted playsinline poster="">
+            <!-- 
+              ============================================================
+              📍 VIDEO PLACEMENT #5 - GALLERY VIDEO (RELIQUARY)
+              ============================================================
+              Replace the src below with your video file:
+              <source src="videos/reliquary-scan.mp4" type="video/mp4">
+              ============================================================
+            -->
+            <source src="real.mp4" type="video/mp4">
+            <!-- <source src="videos/reliquary-3d-scan.mp4" type="video/mp4"> -->
+          </video>
+          <div class="living-overlay"></div>
+          <span class="gallery-live-badge">● Living 3D</span>
+          <div class="gallery-caption">Royal Reliquary · 360 Photogrammetry · Awakened</div>
+        </div>
+      </div>
+
+      <!-- GALLERY ITEM 5 - Temple Reliefs Video -->
+      <div class="gallery-item g5">
+        <div class="gallery-inner">
+          <video autoplay loop muted playsinline poster="">
+            <!-- 
+              ============================================================
+              📍 VIDEO PLACEMENT #6 - GALLERY VIDEO (TEMPLE RELIEFS)
+              ============================================================
+              Replace the src below with your video file:
+              <source src="videos/temple-reliefs.mp4" type="video/mp4">
+              ============================================================
+            -->
+            <source src="temple.mp4" type="video/mp4">
+            <!-- <source src="videos/temple-reliefs-3d.mp4" type="video/mp4"> -->
+          </video>
+          
+          <div class="living-overlay"></div>
+          <span class="gallery-live-badge">● Living 3D</span>
+          <div class="gallery-caption">Temple Reliefs · Spectral Analysis · Awakened</div>
+        </div>
+      </div>
+
+      <!-- GALLERY ITEM 6 - Abu Simbel Video -->
+      <div class="gallery-item g6">
+        <div class="gallery-inner">
+          <video autoplay loop muted playsinline poster="">
+            <!-- 
+              ============================================================
+              📍 VIDEO PLACEMENT #7 - GALLERY VIDEO (ABU SIMBEL)
+              ============================================================
+              Replace the src below with your video file:
+              <source src="videos/abu-simbel.mp4" type="video/mp4">
+              ============================================================
+            -->
+            <source src="Abu_Simbel.mp4" type="video/mp4">
+            <!-- <source src="videos/abu-simbel-3d.mp4" type="video/mp4"> -->
+          </video>
+          
+          <div class="living-overlay"></div>
+          <span class="gallery-live-badge">● Living 3D</span>
+          <div class="gallery-caption">Abu Simbel </div>
+        </div>
+      </div>
+
+      <!-- GALLERY ITEM 7 - Ramesses Statue Video -->
+      <div class="gallery-item g7">
+        <div class="gallery-inner">
+          <video autoplay loop muted playsinline poster="">
+            <!-- 
+              ============================================================
+              📍 VIDEO PLACEMENT #8 - GALLERY VIDEO (RAMESSES STATUE)
+              ============================================================
+              Replace the src below with your video file:
+              <source src="videos/ramesses-statue.mp4" type="video/mp4">
+              ============================================================
+            -->
+            <source src="Statue.mp4" type="video/mp4">
+            <!-- <source src="videos/ramesses-statue-3d.mp4" type="video/mp4"> -->
+          </video>
+          
+          <div class="living-overlay"></div>
+          <span class="gallery-live-badge">● Living 3D</span>
+          <div class="gallery-caption">Ramesses II</div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- NEWS & UPDATES -->
+  <section id="news-updates">
+    <div class="section-header">
+      <span class="section-tag">Latest News</span>
+      <h2 class="section-title">Museum Updates</h2>
+      <div class="section-divider"></div>
+      <p class="section-desc">Stay connected with the latest discoveries, exhibitions, and 3D releases.</p>
+    </div>
+    <div class="updates-grid">
+      <div class="update-card">
+        <span class="update-icon">🏛️</span>
+        <h4>New 3D Scan: Temple of Karnak</h4>
+        <p>LiDAR scanning of the Great Hypostyle Hall has been completed. 3D model available in the gallery.</p>
+        <span class="update-tag">New Release</span>
+      </div>
+      <div class="update-card">
+        <span class="update-icon">📜</span>
+        <h4>Deciphering the Book of the Dead</h4>
+        <p>Interactive 3D reconstruction of the Papyrus of Ani now available with full translation.</p>
+        <span class="update-tag">Interactive</span>
+      </div>
+      <div class="update-card">
+        <span class="update-icon">✨</span>
+        <h4>Night at the Museum: Live Event</h4>
+        <p>Join our virtual event where history comes alive with special guests and live 3D tours.</p>
+        <span class="update-tag">Coming Soon</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- NEWSLETTER -->
+  <section id="newsletter">
+    <div class="newsletter-inner">
+      <h2 class="newsletter-title">Join the Digital Expedition</h2>
+      <p class="newsletter-desc">Subscribe to receive notifications when new 3D volumetric scans, virtual galleries, and archaeological discoveries are unveiled.</p>
+      <form class="newsletter-form" onsubmit="handleSubscribe(event)">
+        <input type="email" placeholder="Enter your email address" required />
+        <button type="submit">Subscribe Now</button>
+      </form>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer>
+    <div class="footer-grid">
+      <div class="footer-brand">
+        <a href="#hero" class="logo">
+          <span class="logo-glyph">𓂀</span>
+          EGYPT <span>DIGITAL</span>
+        </a>
+        <p>Preserving five millennia of ancient Egyptian civilization through modern 3D spatial computation, photogrammetry, and real-time interactive rendering — where history comes alive.</p>
+      </div>
+      <div class="footer-col">
+        <h4>Living Collection</h4>
+        <ul>
+          <li><a href="#">All 3D Artifacts</a></li>
+          <li><a href="#">New Kingdom</a></li>
+          <li><a href="#">Old Kingdom</a></li>
+          <li><a href="#">Middle Kingdom</a></li>
+          <li><a href="#">Ptolemaic Era</a></li>
+        </ul>
+      </div>
+      <div class="footer-col">
+        <h4>Virtual Visit</h4>
+        <ul>
+          <li><a href="#">Interactive 3D Lab</a></li>
+          <li><a href="#">Virtual Reality Mode</a></li>
+          <li><a href="#">Guided Audio Tours</a></li>
+          <li><a href="#">Educational Models</a></li>
+          <li><a href="#">LiDAR Archive</a></li>
+        </ul>
+      </div>
+      <div class="footer-col">
+        <h4>Museum</h4>
+        <ul>
+          <li><a href="#">About the Project</a></li>
+          <li><a href="#">3D Digitization Tech</a></li>
+          <li><a href="#">Publications</a></li>
+          <li><a href="#">Archaeology Partners</a></li>
+          <li><a href="#">Contact Curators</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <p>© 2026 Egypt Digital Museum. Where history comes alive through spatial 3D technology.</p>
+      <div class="social-links">
+        <a href="#" class="social-link" title="Twitter / X">𝕏</a>
+        <a href="#" class="social-link" title="Facebook">f</a>
+        <a href="#" class="social-link" title="LinkedIn">in</a>
+        <a href="#" class="social-link" title="YouTube">▶</a>
+      </div>
+    </div>
+  </footer>
+
+</div>
+
+<!-- MODAL -->
+<div class="modal-overlay" id="modal-overlay">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 class="modal-title" id="modal-title">Artifact Detail</h2>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body" id="modal-body"></div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- JAVASCRIPT -->
+<!-- ============================================================ -->
+<script>
+/* ========== TEXT SCRAMBLE ========== */
+class TextScramble {
+  constructor(el) {
+    this.el = el;
+    this.chars = '!<>-_\\/[]{}—=+*^?#________𓂀𓃭𓊽𓁿𓆣𓋴𓂧𓋹𓄿𓆄𓇳𓋾0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    this.update = this.update.bind(this);
+  }
+  setText(newText) {
+    const oldText = this.el.innerText;
+    const length = Math.max(oldText.length, newText.length);
+    const promise = new Promise((resolve) => this.resolve = resolve);
+    this.queue = [];
+    for (let i = 0; i < length; i++) {
+      const from = oldText[i] || '';
+      const to = newText[i] || '';
+      const start = Math.floor(Math.random() * 15);
+      const end = start + Math.floor(Math.random() * 20);
+      this.queue.push({ from, to, start, end });
+    }
+    cancelAnimationFrame(this.frameRequest);
+    this.frame = 0;
+    this.update();
+    return promise;
+  }
+  update() {
+    let output = '';
+    let complete = 0;
+    for (let i = 0, n = this.queue.length; i < n; i++) {
+      let { from, to, start, end, char } = this.queue[i];
+      if (this.frame >= end) {
+        complete++;
+        output += to;
+      } else if (this.frame >= start) {
+        if (!char || Math.random() < 0.28) {
+          char = this.randomChar();
+          this.queue[i].char = char;
+        }
+        output += `<span style="color:var(--gold-light); opacity:0.85;">${char}</span>`;
+      } else {
+        output += from;
+      }
+    }
+    this.el.innerHTML = output;
+    if (complete === this.queue.length) {
+      this.resolve();
+    } else {
+      this.frameRequest = requestAnimationFrame(this.update);
+      this.frame++;
+    }
+  }
+  randomChar() {
+    return this.chars[Math.floor(Math.random() * this.chars.length)];
+  }
+}
+
+// Only apply scramble to main hero titles
+const heroScrambles = [];
+document.querySelectorAll('#hero .hero-title span, #hero .hero-eyebrow, #hero .hero-subtitle').forEach(el => {
+  const originalText = el.innerText.trim();
+  if (!originalText) return;
+  el.setAttribute('data-original-text', originalText);
+  const fx = new TextScramble(el);
+  heroScrambles.push({ el, fx, originalText });
+});
+
+setTimeout(() => {
+  heroScrambles.forEach((item, index) => {
+    setTimeout(() => item.fx.setText(item.originalText), index * 80);
+  });
+}, 500);
+
+document.querySelectorAll('#hero .hero-title span, #hero .hero-eyebrow, #hero .hero-subtitle').forEach(el => {
+  el.addEventListener('mouseenter', () => {
+    const original = el.getAttribute('data-original-text') || el.innerText;
+    const found = heroScrambles.find(item => item.el === el);
+    if (found) found.fx.setText(original);
+  });
+});
+
+/* ========== LOADER ========== */
+const loaderBar = document.getElementById('loader-bar');
+const loaderPct = document.getElementById('loader-pct');
+let pct = 0;
+const loaderInterval = setInterval(() => {
+  pct = Math.min(pct + Math.random() * 25, 100);
+  loaderBar.style.width = pct + '%';
+  loaderPct.textContent = Math.floor(pct) + '%';
+  if (pct >= 100) {
+    clearInterval(loaderInterval);
+    setTimeout(() => {
+      const el = document.getElementById('loader');
+      el.style.opacity = '0';
+      setTimeout(() => el.style.display = 'none', 800);
+    }, 350);
+  }
+}, 110);
+
+/* ========== HERO VIDEO CONTROLS ========== */
+const heroVid = document.getElementById('hero-bg-video');
+const btnVidToggle = document.getElementById('btn-video-toggle');
+const btnVidSpeed = document.getElementById('btn-video-speed');
+
+function toggleHeroVideo() {
+  if (heroVid.paused) {
+    heroVid.play();
+    btnVidToggle.textContent = '⏸ Pause';
+  } else {
+    heroVid.pause();
+    btnVidToggle.textContent = '▶ Play';
+  }
+}
+
+let speedIndex = 0;
+const speeds = [1, 0.75, 1.25];
+function toggleHeroVideoSpeed() {
+  speedIndex = (speedIndex + 1) % speeds.length;
+  heroVid.playbackRate = speeds[speedIndex];
+  btnVidSpeed.textContent = '⚡ ' + speeds[speedIndex] + 'x';
+}
+
+if (heroVid) {
+  heroVid.muted = true;
+  heroVid.volume = 0;
+}
+
+/* ========== CUSTOM CURSOR ========== */
+const cursor   = document.getElementById('cursor');
+const follower = document.getElementById('cursor-follower');
+let mx = 0, my = 0, fx = 0, fy = 0;
+
+document.addEventListener('mousemove', e => {
+  mx = e.clientX; my = e.clientY;
+  cursor.style.left = mx - 7 + 'px';
+  cursor.style.top  = my - 7 + 'px';
+});
+
+(function cursorLoop() {
+  fx += (mx - fx) * 0.12; fy += (my - fy) * 0.12;
+  follower.style.left = fx - 22 + 'px';
+  follower.style.top  = fy - 22 + 'px';
+  requestAnimationFrame(cursorLoop);
+})();
+
+document.querySelectorAll('a, button, .artifact-card, .exhibition-card, .gallery-item, .viewer-tab-btn').forEach(el => {
+  el.addEventListener('mouseenter', () => {
+    cursor.style.transform = 'scale(2.2)'; cursor.style.borderColor = 'var(--turquoise)';
+    follower.style.width = '64px'; follower.style.height = '64px';
+    follower.style.borderColor = 'rgba(0, 229, 255, 0.4)';
+  });
+  el.addEventListener('mouseleave', () => {
+    cursor.style.transform = 'scale(1)'; cursor.style.borderColor = 'var(--gold)';
+    follower.style.width = '44px'; follower.style.height = '44px';
+    follower.style.borderColor = 'rgba(229, 193, 88, 0.3)';
+  });
+});
+
+/* ========== THREE.JS BACKGROUND ========== */
+(function() {
+  const canvas   = document.getElementById('canvas-bg');
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setSize(window.innerWidth, window.innerHeight);
+
+  const scene  = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 1000);
+  camera.position.z = 5;
+
+  const N = 2000;
+  const sg = new THREE.BufferGeometry();
+  const sp = new Float32Array(N * 3);
+  const sc = new Float32Array(N * 3);
+  for (let i = 0; i < N; i++) {
+    sp[i*3]   = (Math.random()-0.5)*90;
+    sp[i*3+1] = (Math.random()-0.5)*90;
+    sp[i*3+2] = (Math.random()-0.5)*90;
+    const g = Math.random() < 0.35, c = Math.random() < 0.15;
+    if (g)      { sc[i*3]=0.90; sc[i*3+1]=0.76; sc[i*3+2]=0.35; }
+    else if (c) { sc[i*3]=0.00; sc[i*3+1]=0.90; sc[i*3+2]=1.00; }
+    else        { sc[i*3]=0.95; sc[i*3+1]=0.92; sc[i*3+2]=0.85; }
+  }
+  sg.setAttribute('position', new THREE.BufferAttribute(sp, 3));
+  sg.setAttribute('color',    new THREE.BufferAttribute(sc, 3));
+  scene.add(new THREE.Points(sg, new THREE.PointsMaterial({ size: 0.055, vertexColors: true, transparent: true, opacity: 0.75 })));
+
+  const pg = new THREE.BufferGeometry();
+  const pp = new Float32Array(300 * 3);
+  for (let i = 0; i < 300; i++) {
+    pp[i*3]   = (Math.random()-0.5)*22;
+    pp[i*3+1] = (Math.random()-0.5)*22;
+    pp[i*3+2] = (Math.random()-0.5)*12;
+  }
+  pg.setAttribute('position', new THREE.BufferAttribute(pp, 3));
+  const dust = new THREE.Points(pg, new THREE.PointsMaterial({ size: 0.04, color: 0xE5C158, transparent: true, opacity: 0.5 }));
+  scene.add(dust);
+
+  const magicParticles = new THREE.BufferGeometry();
+  const mpPos = new Float32Array(150 * 3);
+  for (let i = 0; i < 150; i++) {
+    mpPos[i*3] = (Math.random()-0.5)*30;
+    mpPos[i*3+1] = (Math.random()-0.5)*20;
+    mpPos[i*3+2] = (Math.random()-0.5)*15;
+  }
+  magicParticles.setAttribute('position', new THREE.BufferAttribute(mpPos, 3));
+  const magicMat = new THREE.PointsMaterial({
+    color: 0xFF6B9D,
+    size: 0.03,
+    transparent: true,
+    opacity: 0.3,
+    blending: THREE.AdditiveBlending
+  });
+  const magic = new THREE.Points(magicParticles, magicMat);
+  scene.add(magic);
+
+  let tx = 0, ty = 0, sy = 0;
+  document.addEventListener('mousemove', e => { tx = (e.clientX/window.innerWidth - 0.5)*0.5; ty = (e.clientY/window.innerHeight - 0.5)*0.25; });
+  window.addEventListener('scroll', () => sy = window.scrollY);
+
+  const stars = scene.children[0];
+  function animate(t) {
+    requestAnimationFrame(animate);
+    const time = t * 0.001;
+    stars.rotation.y = time * 0.008; stars.rotation.x = time * 0.003;
+    dust.rotation.y  = time * 0.025; dust.position.y  = Math.sin(time * 0.4) * 0.12;
+    magic.rotation.y = time * 0.01;
+    magic.rotation.x = Math.sin(time * 0.005) * 0.1;
+    camera.position.x += (tx - camera.position.x) * 0.04;
+    camera.position.y += (-ty - camera.position.y) * 0.04;
+    camera.position.y -= sy * 0.0003;
+    renderer.render(scene, camera);
+  }
+  animate(0);
+
+  window.addEventListener('resize', () => {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+  });
+})();
+
+/* ========== INTERACTIVE 3D VIEWER ========== */
+let current3DGroup = null;
+const modelData = {
+  mask: {
+    title: 'Mask of Tutankhamun',
+    subtitle: 'Dynasty XVIII · Gold & Lapis Lazuli',
+    desc: 'Crafted from two beaten gold plates weighing over 10 kg, inlaid with semiprecious lapis lazuli and carnelian. The death mask of Tutankhamun guaranteed the preservation of his identity for eternal judgment.',
+    era: '1323 BCE',
+    res: '0.05 mm LiDAR',
+    loc: 'KV62, Valley of Kings',
+    mat: '24K Gold Alloy'
+  },
+  pyramid: {
+    title: 'Great Pyramid of Khufu',
+    subtitle: 'Dynasty IV · True Geometric Pyramid',
+    desc: 'The only surviving ancient wonder. Built with 2.3 million megalithic blocks aligned with extraordinary cardinal precision. Its golden capstone (pyramidion) once reflected the Egyptian sun across miles.',
+    era: 'c. 2560 BCE',
+    res: '0.10 mm Photogrammetry',
+    loc: 'Giza Necropolis',
+    mat: 'Nummulitic Limestone'
+  },
+  ankh: {
+    title: 'Sacred Ankh of Life',
+    subtitle: 'Symbol of Divine Immortality',
+    desc: 'The key of life representing breath, fertility, and divine transcendence. Handled by pharaohs and gods during temple coronation and purification rituals.',
+    era: 'c. 1350 BCE',
+    res: '0.02 mm Laser Scan',
+    loc: 'Luxor Temple',
+    mat: 'Gilded Electrum'
+  },
+  obelisk: {
+    title: 'Luxor Sacred Obelisk',
+    subtitle: 'Solar Needle of Amun-Ra',
+    desc: 'Monolithic red granite pillar towering toward the heavens, inscribed with deep royal dedications celebrating the pharaoh as the physical embodiment of the sun god Ra.',
+    era: 'c. 1250 BCE',
+    res: '0.08 mm Aerial Scan',
+    loc: 'Luxor Temple Portal',
+    mat: 'Aswan Red Granite'
+  }
+};
+
+(function init3DStudio() {
+  const canvas = document.getElementById('interactive-3d-canvas');
+  if (!canvas) return;
+  const wrap = canvas.parentElement;
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setSize(wrap.clientWidth, wrap.clientHeight);
+
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(45, wrap.clientWidth / wrap.clientHeight, 0.1, 100);
+  camera.position.set(0, 1.8, 7.5);
+  camera.lookAt(0, 0, 0);
+
+  scene.add(new THREE.AmbientLight(0xE5C158, 0.35));
+  const keyLight = new THREE.DirectionalLight(0xFFE484, 2.2);
+  keyLight.position.set(5, 7, 5); scene.add(keyLight);
+  const fillLight = new THREE.DirectionalLight(0x00E5FF, 1.4);
+  fillLight.position.set(-5, 2, -4); scene.add(fillLight);
+  const rimLight = new THREE.PointLight(0xE5C158, 1.8, 25);
+  rimLight.position.set(0, 5, -5); scene.add(rimLight);
+
+  const glowLight = new THREE.PointLight(0xFF6B9D, 0.6, 15);
+  glowLight.position.set(2, 1, 3);
+  scene.add(glowLight);
+
+  const baseGroup = new THREE.Group();
+  const platGeo = new THREE.CylinderGeometry(2.4, 2.7, 0.25, 48);
+  const platMat = new THREE.MeshPhongMaterial({ color: 0x140e06, emissive: 0x0a0703, shininess: 50, specular: 0xE5C158 });
+  const plat = new THREE.Mesh(platGeo, platMat);
+  plat.position.y = -1.8;
+  baseGroup.add(plat);
+
+  const ringGeo = new THREE.RingGeometry(2.45, 2.55, 64);
+  const ringMat = new THREE.MeshBasicMaterial({ color: 0xE5C158, side: THREE.DoubleSide });
+  const ring = new THREE.Mesh(ringGeo, ringMat);
+  ring.rotation.x = Math.PI / 2;
+  ring.position.y = -1.67;
+  baseGroup.add(ring);
+  scene.add(baseGroup);
+
+  const auraN = 120, auraGeo = new THREE.BufferGeometry(), auraP = new Float32Array(auraN * 3);
+  for (let i = 0; i < auraN; i++) {
+    const a = (i/auraN) * Math.PI * 2, r = 2.8 + Math.random() * 0.8;
+    auraP[i*3] = Math.cos(a)*r; auraP[i*3+1] = (Math.random()-0.5)*3.2; auraP[i*3+2] = Math.sin(a)*r;
+  }
+  auraGeo.setAttribute('position', new THREE.BufferAttribute(auraP, 3));
+  const aura = new THREE.Points(auraGeo, new THREE.PointsMaterial({ color: 0xE5C158, size: 0.055, transparent: true, opacity: 0.7 }));
+  scene.add(aura);
+
+  function createMaskMesh() {
+    const g = new THREE.Group();
+    const headGeo = new THREE.SphereGeometry(1.2, 32, 24);
+    headGeo.scale(1, 1.35, 0.95);
+    const goldMat = new THREE.MeshPhongMaterial({ color: 0xE5C158, emissive: 0x332005, shininess: 120, specular: 0xFFE580 });
+    const head = new THREE.Mesh(headGeo, goldMat);
+    g.add(head);
+
+    const lapisMat = new THREE.MeshPhongMaterial({ color: 0x1A3A5C, shininess: 90 });
+    for (let i = -3; i <= 3; i++) {
+      const stripeGeo = new THREE.TorusGeometry(1.18, 0.04, 16, 32, Math.PI * 0.85);
+      const stripe = new THREE.Mesh(stripeGeo, lapisMat);
+      stripe.rotation.x = Math.PI / 2 + 0.15;
+      stripe.position.set(0, i * 0.25, 0.05);
+      g.add(stripe);
+    }
+
+    const beardGeo = new THREE.CylinderGeometry(0.08, 0.16, 1.1, 16);
+    const beard = new THREE.Mesh(beardGeo, goldMat);
+    beard.position.set(0, -1.5, 0.7);
+    beard.rotation.x = 0.2;
+    g.add(beard);
+
+    const crestGeo = new THREE.TorusGeometry(0.2, 0.05, 8, 16);
+    const crest = new THREE.Mesh(crestGeo, new THREE.MeshPhongMaterial({ color: 0x00E5FF }));
+    crest.position.set(0, 1.4, 0.8);
+    g.add(crest);
+
+    g.position.y = 0.2;
+    return g;
+  }
+
+  function createPyramidMesh() {
+    const g = new THREE.Group();
+    const geo = new THREE.ConeGeometry(2.3, 3.2, 4, 1);
+    const mat = new THREE.MeshPhongMaterial({ color: 0xD6C29E, emissive: 0x221808, shininess: 30, flatShading: true });
+    const pyr = new THREE.Mesh(geo, mat);
+    pyr.rotation.y = Math.PI / 4;
+    g.add(pyr);
+
+    const capGeo = new THREE.ConeGeometry(0.7, 1.0, 4, 1);
+    const capMat = new THREE.MeshPhongMaterial({ color: 0xFFD700, emissive: 0x443000, shininess: 120, specular: 0xFFF099 });
+    const cap = new THREE.Mesh(capGeo, capMat);
+    cap.rotation.y = Math.PI / 4;
+    cap.position.y = 1.1;
+    g.add(cap);
+
+    const wireMat = new THREE.MeshBasicMaterial({ color: 0x00E5FF, wireframe: true, transparent: true, opacity: 0.3 });
+    const wire = new THREE.Mesh(geo, wireMat);
+    wire.rotation.y = Math.PI / 4;
+    g.add(wire);
+
+    g.position.y = -0.1;
+    return g;
+  }
+
+  function createAnkhMesh() {
+    const g = new THREE.Group();
+    const goldMat = new THREE.MeshPhongMaterial({ color: 0xE5C158, emissive: 0x3a2505, shininess: 110, specular: 0xFFE077 });
+
+    const loopGeo = new THREE.TorusGeometry(0.8, 0.14, 24, 48);
+    const loop = new THREE.Mesh(loopGeo, goldMat);
+    loop.position.y = 0.9;
+    g.add(loop);
+
+    const barGeo = new THREE.CylinderGeometry(0.14, 0.14, 2.0, 24);
+    const bar = new THREE.Mesh(barGeo, goldMat);
+    bar.rotation.z = Math.PI / 2;
+    bar.position.y = 0.1;
+    g.add(bar);
+
+    const shaftGeo = new THREE.CylinderGeometry(0.14, 0.12, 1.8, 24);
+    const shaft = new THREE.Mesh(shaftGeo, goldMat);
+    shaft.position.y = -0.8;
+    g.add(shaft);
+
+    const gemGeo = new THREE.OctahedronGeometry(0.24, 0);
+    const gem = new THREE.Mesh(gemGeo, new THREE.MeshPhongMaterial({ color: 0x00E5FF, emissive: 0x003333, shininess: 100 }));
+    gem.position.set(0, 0.1, 0.15);
+    g.add(gem);
+
+    g.position.y = 0.3;
+    return g;
+  }
+
+  function createObeliskMesh() {
+    const g = new THREE.Group();
+    const graniteMat = new THREE.MeshPhongMaterial({ color: 0x9B4E38, emissive: 0x220A05, shininess: 40, flatShading: true });
+    
+    const bodyGeo = new THREE.CylinderGeometry(0.45, 0.7, 3.8, 4);
+    const body = new THREE.Mesh(bodyGeo, graniteMat);
+    body.rotation.y = Math.PI / 4;
+    g.add(body);
+
+    const topGeo = new THREE.ConeGeometry(0.45, 0.8, 4, 1);
+    const topMat = new THREE.MeshPhongMaterial({ color: 0xFFD700, emissive: 0x443000, shininess: 120 });
+    const top = new THREE.Mesh(topGeo, topMat);
+    top.rotation.y = Math.PI / 4;
+    top.position.y = 2.3;
+    g.add(top);
+
+    g.position.y = -0.3;
+    return g;
+  }
+
+  current3DGroup = createMaskMesh();
+  scene.add(current3DGroup);
+
+  window.switch3DModel = function(type, btn) {
+    document.querySelectorAll('.viewer-tab-btn').forEach(b => b.classList.remove('active'));
+    if (btn) btn.classList.add('active');
+
+    if (current3DGroup) scene.remove(current3DGroup);
+
+    if (type === 'mask') current3DGroup = createMaskMesh();
+    else if (type === 'pyramid') current3DGroup = createPyramidMesh();
+    else if (type === 'ankh') current3DGroup = createAnkhMesh();
+    else if (type === 'obelisk') current3DGroup = createObeliskMesh();
+
+    scene.add(current3DGroup);
+
+    const d = modelData[type];
+    if (d) {
+      document.getElementById('viewer-title').textContent = d.title;
+      document.getElementById('viewer-subtitle').textContent = d.subtitle;
+      document.getElementById('viewer-desc').textContent = d.desc;
+      document.getElementById('viewer-spec-era').textContent = d.era;
+      document.getElementById('viewer-spec-res').textContent = d.res;
+      document.getElementById('viewer-spec-loc').textContent = d.loc;
+      document.getElementById('viewer-spec-mat').textContent = d.mat;
+    }
+  };
+
+  let isDragging = false, prevX = 0, prevY = 0;
+  let rotY = 0, rotX = 0;
+  canvas.addEventListener('mousedown', e => { isDragging = true; prevX = e.clientX; prevY = e.clientY; });
+  canvas.addEventListener('touchstart', e => { isDragging = true; prevX = e.touches[0].clientX; prevY = e.touches[0].clientY; });
+  window.addEventListener('mouseup', () => isDragging = false);
+  window.addEventListener('touchend', () => isDragging = false);
+  window.addEventListener('mousemove', e => {
+    if (!isDragging) return;
+    rotY += (e.clientX - prevX) * 0.012;
+    rotX += (e.clientY - prevY) * 0.008;
+    rotX = Math.max(-0.6, Math.min(0.6, rotX));
+    prevX = e.clientX; prevY = e.clientY;
+  });
+  window.addEventListener('touchmove', e => {
+    if (!isDragging) return;
+    rotY += (e.touches[0].clientX - prevX) * 0.012;
+    rotX += (e.touches[0].clientY - prevY) * 0.008;
+    rotX = Math.max(-0.6, Math.min(0.6, rotX));
+    prevX = e.touches[0].clientX; prevY = e.touches[0].clientY;
+  });
+
+  function animate(t) {
+    requestAnimationFrame(animate);
+    const time = t * 0.001;
+    if (!isDragging) rotY += 0.008;
+    if (current3DGroup) {
+      current3DGroup.rotation.y = rotY;
+      current3DGroup.rotation.x = rotX;
+      current3DGroup.position.y = Math.sin(time * 1.5) * 0.08;
+    }
+    aura.rotation.y = -time * 0.3;
+    ring.rotation.z = time * 0.4;
+    keyLight.position.x = Math.sin(time * 0.8) * 6;
+    keyLight.position.z = Math.cos(time * 0.8) * 6;
+    glowLight.position.x = Math.sin(time * 0.6) * 3;
+    glowLight.position.z = Math.cos(time * 0.6) * 3;
+    renderer.render(scene, camera);
+  }
+  animate(0);
+
+  window.addEventListener('resize', () => {
+    renderer.setSize(wrap.clientWidth, wrap.clientHeight);
+    camera.aspect = wrap.clientWidth / wrap.clientHeight;
+    camera.updateProjectionMatrix();
+  });
+})();
+
+function triggerArtifactInspect() {
+  const currentTitle = document.getElementById('viewer-title').textContent;
+  if (currentTitle.includes('Tutankhamun')) openModal('mask');
+  else if (currentTitle.includes('Pyramid')) openModal('pyramid');
+  else if (currentTitle.includes('Ankh')) openModal('ankh');
+  else openModal('stele');
+}
+
+/* ========== 3D TILT EFFECT ========== */
+document.querySelectorAll('[data-tilt]').forEach(card => {
+  card.addEventListener('mousemove', e => {
+    const rect = card.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    const centerX = rect.width / 2;
+    const centerY = rect.height / 2;
+    const rotateX = ((y - centerY) / centerY) * -12;
+    const rotateY = ((x - centerX) / centerX) * 12;
+
+    card.style.transform = `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) translateY(-8px)`;
+
+    const glare = card.querySelector('.artifact-3d-glare');
+    if (glare) {
+      const glareX = (x / rect.width) * 100;
+      const glareY = (y / rect.height) * 100;
+      glare.style.background = `radial-gradient(circle at ${glareX}% ${glareY}%, rgba(255,255,255,0.25) 0%, transparent 60%)`;
+    }
+  });
+
+  card.addEventListener('mouseleave', () => {
+    card.style.transform = 'perspective(1000px) rotateX(0deg) rotateY(0deg) translateY(0)';
+    const glare = card.querySelector('.artifact-3d-glare');
+    if (glare) {
+      glare.style.background = 'linear-gradient(125deg, rgba(255,255,255,0.18) 0%, transparent 50%, rgba(229,193,88,0.1) 100%)';
+    }
+  });
+});
+
+/* ========== NAV SCROLL ========== */
+window.addEventListener('scroll', () => document.getElementById('navbar').classList.toggle('scrolled', window.scrollY > 40));
+
+/* ========== COUNTER ANIMATION ========== */
+function countUp(el) {
+  const target = +el.dataset.target, dur = 2200, start = performance.now();
+  (function step(now) {
+    const p = Math.min((now - start) / dur, 1);
+    const v = Math.floor((1 - Math.pow(1 - p, 3)) * target);
+    el.textContent = v >= 1000 ? v.toLocaleString() : v;
+    if (p < 1) requestAnimationFrame(step);
+  })(performance.now());
+}
+let counted = false;
+new IntersectionObserver(([e]) => {
+  if (e.isIntersecting && !counted) { counted = true; document.querySelectorAll('.stat-number').forEach(countUp); }
+}, { threshold: 0.4 }).observe(document.getElementById('stats'));
+
+/* ========== TIMELINE REVEAL ========== */
+document.querySelectorAll('.timeline-item').forEach(item => {
+  new IntersectionObserver(([e]) => { if (e.isIntersecting) e.target.classList.add('visible'); }, { threshold: 0.2 }).observe(item);
+});
+
+/* ========== SCROLL REVEAL ========== */
+const reveals = document.querySelectorAll('.section-header, .artifact-card, .exhibition-card, .gallery-item');
+const revObs = new IntersectionObserver(entries => {
+  entries.forEach((e, i) => {
+    if (e.isIntersecting) {
+      setTimeout(() => { e.target.style.opacity = '1'; e.target.style.transform = 'translateY(0)'; }, i * 60);
+      revObs.unobserve(e.target);
+    }
+  });
+}, { threshold: 0.1 });
+reveals.forEach(el => {
+  el.style.opacity = '0';
+  el.style.transform = 'translateY(24px)';
+  el.style.transition = 'opacity 0.65s ease, transform 0.65s ease';
+  revObs.observe(el);
+});
+
+/* ========== MODAL DATA ========== */
+const artifacts = {
+  mask: {
+    title: 'Mask of Tutankhamun',
+    img: 'mask.jpg',
+    Period: 'New Kingdom', Dynasty: '18th Dynasty',
+    Date: 'c. 1323 BCE', Location: 'Valley of the Kings, KV62',
+    Material: 'Gold, Lapis Lazuli, Carnelian, Obsidian, Turquoise',
+    text: `The iconic death mask of Tutankhamun is crafted from two layers of heavy gauge gold with intricate inlays of lapis lazuli, carnelian, obsidian, and faience. Discovered by Howard Carter in 1922 in the tomb KV62, it weighs 10.23 kg. Inscribed upon the shoulders and back is Chapter 151B of the Egyptian Book of the Dead, granting the young king protection and identification with Osiris, lord of the afterlife. When you gaze upon it, you see not just gold, but the spirit of a boy who became a legend.`
+  },
+  pyramid: {
+    title: 'Great Pyramid of Khufu',
+    img: 'giza.jpg',
+    Period: 'Old Kingdom', Dynasty: '4th Dynasty',
+    Date: 'c. 2560 BCE', Location: 'Giza Necropolis',
+    Material: 'Nummulitic Limestone & Aswan Pink Granite',
+    text: `Standing as the sole intact survivor of the Seven Wonders of the Ancient World, the Great Pyramid was built as a tomb for Pharaoh Khufu. Composed of approximately 2.3 million stone blocks weighing up to 80 tons each, its four faces are oriented with astounding precision to true celestial north. Its interior contains three known chambers: the Subterranean Chamber, Queen's Chamber, and King's Chamber. The pyramid is not just stone — it is a testament to human ambition that still stands alive today.`
+  },
+  sphinx: {
+    title: 'The Great Sphinx of Giza',
+    img: 'https://images.unsplash.com/photo-1568322445389-f64ac2515020?auto=format&fit=crop&w=1000&q=80',
+    Period: 'Old Kingdom', Dynasty: '4th Dynasty',
+    Date: 'c. 2500 BCE', Location: 'Giza Necropolis',
+    Material: 'Monolithic Bedrock Limestone',
+    text: `The Great Sphinx is a monumental limestone statue of a reclining lion with the head of an Egyptian pharaoh, believed to represent Khafre. Carved directly from a single outcrop of natural bedrock, it measures 73 meters in length and 20 meters in height, symbolizing solar power and divine royal vigilance over the horizon. The Sphinx has watched over the desert for millennia — and it still watches, alive in the imagination of all who behold it.`
+  },
+  stele: {
+    title: 'The Rosetta Stone',
+    img: 'stone.jpg',
+    Period: 'Ptolemaic Period', Dynasty: 'Ptolemy V Epiphanes',
+    Date: '196 BCE', Location: 'Fort Julien, Rashid (Rosetta)',
+    Material: 'Granodiorite',
+    text: `Discovered in 1799, this granodiorite stele features a single decree issued by a congress of priests affirmed at Memphis. The text is recorded in three distinct scripts: Ancient Egyptian hieroglyphs, Demotic script, and Ancient Greek. This trilingual parallel allowed Jean-François Champollion to decipher Egyptian hieroglyphs in 1822, opening centuries of lost history. The Rosetta Stone is the key that unlocked a civilization — and it continues to speak to us today.`
+  },
+  ankh: {
+    title: 'Golden Ankh of Eternity',
+    img: 'Golden Ankh.jpg',
+    Period: 'New Kingdom', Dynasty: '18th Dynasty',
+    Date: 'c. 1350 BCE', Location: 'Luxor Temple Precinct',
+    Material: 'Electrum, Turquoise & Carnelian',
+    text: `The ankh (𓋹) represents the breath of eternal life and divine union. Often clutched by Egyptian gods touching the lips of pharaohs, it bestowed longevity, purification, and solar protection. This electrum ceremonial piece exemplifies the height of royal metalworking artistry. The Ankh is not just a symbol — it is the promise of life that transcends death itself.`
+  },
+  papyrus: {
+    title: 'Papyrus of Ani — Book of the Dead',
+    img: 'Papyrus of Ani.jpg',
+    Period: 'New Kingdom', Dynasty: '19th Dynasty',
+    Date: 'c. 1275 BCE', Location: 'Thebes (Modern Luxor)',
+    Material: 'Papyrus Reed & Mineral Pigments',
+    text: `Measuring 24 meters long, the Papyrus of Ani is the definitive masterwork of the Egyptian funerary corpus. It features vivid vignettes illustrating the trial of the deceased in the Hall of Ma'at, where the human heart is weighed against the feather of cosmic truth. This papyrus is not merely a document — it is a guidebook for the soul's journey into eternity, still vibrant and alive after thousands of years.`
+  }
+};
+
+function openModal(key) {
+  const a = artifacts[key]; if (!a) return;
+  document.getElementById('modal-title').textContent = a.title;
+
+  const metas = ['Period','Dynasty','Date','Location','Material'];
+  const metaHTML = metas.map(k => {
+    const full = k === 'Material';
+    return `<div class="modal-meta-item"${full ? ' style="grid-column:span 2"' : ''}>
+      <span class="modal-meta-label">${k}</span>
+      <span class="modal-meta-value">${a[k]}</span>
+    </div>`;
+  }).join('');
+  document.getElementById('modal-body').innerHTML = `
+    <div class="modal-img-wrap"><img src="${a.img}" alt="${a.title}" /></div>
+    <div class="modal-meta">${metaHTML}</div>
+    <p class="modal-text">${a.text}</p>
+  `;
+  const ov = document.getElementById('modal-overlay');
+  ov.style.display = 'flex';
+  requestAnimationFrame(() => ov.classList.add('active', 'visible'));
+  document.body.style.overflow = 'hidden';
+}
+
+function closeModal() {
+  const ov = document.getElementById('modal-overlay');
+  ov.classList.remove('visible');
+  setTimeout(() => { ov.classList.remove('active'); ov.style.display = 'none'; document.body.style.overflow = ''; }, 320);
+}
+
+document.getElementById('modal-overlay').addEventListener('click', e => { if (e.target === e.currentTarget) closeModal(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+
+/* ========== NEWSLETTER ========== */
+function handleSubscribe(e) {
+  e.preventDefault();
+  const btn = e.target.querySelector('button');
+  btn.textContent = '✓ Subscribed!';
+  btn.style.background = 'linear-gradient(135deg, #1a5c1a, #2a9a2a)';
+  btn.style.color = '#fff';
+  setTimeout(() => { btn.textContent = 'Subscribe Now'; btn.style.background = ''; btn.style.color = ''; e.target.reset(); }, 3200);
+}
+</script>
+</body>
+</html>
