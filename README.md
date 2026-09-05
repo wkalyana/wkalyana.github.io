@@ -36,7 +36,6 @@ Discover themed digital exhibitions such as:
 - Building the Pyramids
 - Guardian of the Necropolis
 
-Each exhibition combines imagery, descriptions, and immersive digital presentation.
 
 ### 🎥 Living 3D Gallery
 Experience ancient Egyptian monuments and artifacts through cinematic 3D videos, including:
